@@ -23,6 +23,9 @@ type ImportResponse = {
     proteinG?: number
     carbsG?: number
     fatG?: number
+    notes?: string
+    servingSize?: string
+    servingWeight?: string
     description?: string
     instructions?: string
     ingredients?: string[]
@@ -87,7 +90,10 @@ Use web_search to:
 For the meal object extract:
 - name, emoji, tags (from ["high-protein","low-carb","balanced","vegetarian"]), isVeg
 - proteinG, carbsG, fatG (per serving estimates)
-- description (2-4 sentences), instructions (step-by-step cooking, 4-8 steps), ingredients (with amounts)
+- servingSize: yield from the recipe (e.g. "6 servings" or "4 bowls")
+- servingWeight: optional per-serving weight if stated or reasonably estimable (e.g. "~280g per serving")
+- notes: optional prep tips or caveats from the page (empty string if none)
+- description (2-4 sentences), instructions (step-by-step cooking, 4-8 steps), ingredients (with amounts and weights where listed)
 - samItems (bulk/Sam's Club), htItems (fresh/Harris Teeter)
 - sourceUrl: "${url}"
 
@@ -152,6 +158,9 @@ Respond ONLY with valid JSON in this exact shape (no markdown):
         proteinG: m.proteinG ?? 0,
         carbsG: m.carbsG ?? 0,
         fatG: m.fatG ?? 0,
+        notes: asText(m.notes),
+        servingSize: asText(m.servingSize),
+        servingWeight: asText(m.servingWeight),
         description:
           description ||
           `Imported recipe for ${m.name}. Check the original link for full cooking instructions.`,

@@ -101,7 +101,14 @@
 .macros {
   font-size: 13px;
   color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.servingInfo {
+  font-size: 13px;
+  color: var(--sage);
   margin: 0 0 16px;
+  font-weight: 500;
 }
 
 .section {

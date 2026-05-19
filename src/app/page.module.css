@@ -12,6 +12,8 @@
 .settingsSection { background: var(--bg); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
 .settingsTitle { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
 .settingsDesc { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+.focusChips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.focusCustom { width: 100%; margin-top: 4px; min-height: 56px; resize: vertical; }
 .mealTypeRow { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
 .mealTypeRow:last-child { border-bottom: none; }
 .mealTypeToggle { width: 44px; height: 26px; border-radius: 13px; border: none; background: var(--border2); cursor: pointer; position: relative; flex-shrink: 0; }

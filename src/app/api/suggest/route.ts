@@ -8,21 +8,27 @@ import {
   parseJsonFromText,
 } from '@/lib/anthropic'
 import { normalizeMealSuggestion, type RawMealSuggestion } from '@/lib/normalizeMeal'
+import { buildMealFocusPrompt, type MealFocusPrefs } from '@/lib/mealFocus'
 
 const client = new Anthropic()
 
-const FAMILY_PREFS = `Family preferences (apply to every meal):
-- High protein, low carb, but balanced overall
-- Wife (Allyson) leans vegetarian but eats meat — at least 2 of the 5 meals should be vegetarian-friendly when suggesting dinners; for other meal types, include some vegetarian-friendly options where natural
+const BASE_FAMILY_PREFS = `Family context (apply to every meal):
 - Two young kids who eat separately (not your concern here)
 - They shop at Sam's Club (bulk) and Harris Teeter/Kroger (small quantities)
 - Nothing too exotic or time-consuming`
 
-function buildPrompt(mealType: MealType, existingMealNames: string[], favoriteMealNames: string[]) {
+function buildPrompt(
+  mealType: MealType,
+  existingMealNames: string[],
+  favoriteMealNames: string[],
+  mealFocus?: MealFocusPrefs
+) {
+  const focusBlock = mealFocus ? buildMealFocusPrompt(mealFocus) : ''
+  const familyPrefs = [BASE_FAMILY_PREFS, focusBlock].filter(Boolean).join('\n\n')
   const typeContext = mealTypePromptContext(mealType)
   return `You are a meal planning assistant for a family.
 
-${FAMILY_PREFS}
+${familyPrefs}
 
 ${typeContext}
 
@@ -43,6 +49,9 @@ For each meal return a JSON object with ALL of these required fields:
 - proteinG: number (per serving, realistic)
 - carbsG: number (per serving)
 - fatG: number (per serving)
+- servingSize: string (e.g. "4 servings" or "1 bowl" — per serving if the recipe is for multiple)
+- servingWeight: string (optional per-serving weight estimate, e.g. "~350g per serving")
+- notes: string (optional — prep tips, substitutions, or family notes; empty string if none)
 - description: string (REQUIRED — 2-3 full sentences about the dish; never empty)
 - instructions: string (REQUIRED — numbered or step-by-step cooking directions, 4-8 clear steps for a weeknight)
 - ingredients: array of strings (REQUIRED — 6-12 ingredients with amounts; never empty)
@@ -65,9 +74,10 @@ function blockSummary(message: Anthropic.Message): string {
 async function suggestForMealType(
   mealType: MealType,
   existingMealNames: string[],
-  favoriteMealNames: string[]
+  favoriteMealNames: string[],
+  mealFocus?: MealFocusPrefs
 ) {
-  const basePrompt = buildPrompt(mealType, existingMealNames, favoriteMealNames)
+  const basePrompt = buildPrompt(mealType, existingMealNames, favoriteMealNames, mealFocus)
   let lastError: unknown
 
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -112,10 +122,12 @@ export async function POST(req: NextRequest) {
     existingMealNames = [],
     favoriteMealNames = [],
     activeMealTypes = ['dinner'],
+    mealFocus,
   } = body as {
     existingMealNames?: string[]
     favoriteMealNames?: string[]
     activeMealTypes?: string[]
+    mealFocus?: MealFocusPrefs
   }
 
   const types = (activeMealTypes as MealType[]).filter(t => MEAL_TYPES.includes(t))
@@ -126,7 +138,7 @@ export async function POST(req: NextRequest) {
   try {
     const entries: [MealType, Awaited<ReturnType<typeof suggestForMealType>>][] = []
     for (const mealType of types) {
-      const items = await suggestForMealType(mealType, existingMealNames, favoriteMealNames)
+      const items = await suggestForMealType(mealType, existingMealNames, favoriteMealNames, mealFocus)
       entries.push([mealType, items])
     }
 

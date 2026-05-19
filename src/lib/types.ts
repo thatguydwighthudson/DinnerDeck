@@ -14,6 +14,9 @@ export type PlannedMeal = {
   proteinG: number
   carbsG: number
   fatG: number
+  notes?: string
+  servingSize?: string
+  servingWeight?: string
   description: string
   instructions: string
   ingredients: string[]

@@ -81,6 +81,32 @@
   text-overflow: ellipsis;
 }
 
+.weekMacroBlock {
+  margin-top: 4px;
+  padding: 14px 16px;
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 12px;
+}
+
+.weekMacroLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.weekMacroLine {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
 .groceryBtn {
   margin-top: 8px;
   background: var(--bg);

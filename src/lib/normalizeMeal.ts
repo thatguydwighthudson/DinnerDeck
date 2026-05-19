@@ -36,6 +36,9 @@ export type RawMealSuggestion = {
   proteinG?: number
   carbsG?: number
   fatG?: number
+  notes?: string
+  servingSize?: string
+  servingWeight?: string
   description?: string
   instructions?: string
   ingredients?: string[]
@@ -65,6 +68,9 @@ export function normalizeMealSuggestion(s: RawMealSuggestion) {
     proteinG: s.proteinG ?? 0,
     carbsG: s.carbsG ?? 0,
     fatG: s.fatG ?? 0,
+    notes: (s.notes ?? '').trim(),
+    servingSize: (s.servingSize ?? '').trim(),
+    servingWeight: (s.servingWeight ?? '').trim(),
     description:
       description ||
       `A healthy ${s.name} — simple prep with fresh ingredients, perfect for the family.`,

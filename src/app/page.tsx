@@ -22,6 +22,13 @@ import {
   saveActiveMealTypes,
   type MealType,
 } from '@/lib/mealTypes'
+import {
+  MEAL_FOCUS_PRESETS,
+  loadMealFocus,
+  saveMealFocus,
+  type MealFocusPrefs,
+  type MealFocusPresetId,
+} from '@/lib/mealFocus'
 import { clearWeekSuggestions } from '@/lib/weekSuggestions'
 import MealDetailModal from '@/components/MealDetailModal'
 import KidsPickerSheet from '@/components/KidsPickerSheet'
@@ -45,6 +52,9 @@ const emptyMealForm = (mealType: MealType = 'dinner') => ({
   proteinG: '',
   carbsG: '',
   fatG: '',
+  notes: '',
+  servingSize: '',
+  servingWeight: '',
   description: '',
   instructions: '',
   ingredients: '',
@@ -61,6 +71,9 @@ const mealToForm = (m: Meal) => ({
   proteinG: String(m.proteinG ?? ''),
   carbsG: String(m.carbsG ?? ''),
   fatG: String(m.fatG ?? ''),
+  notes: m.notes ?? '',
+  servingSize: m.servingSize ?? '',
+  servingWeight: m.servingWeight ?? '',
   description: m.description ?? '',
   instructions: m.instructions ?? '',
   ingredients: (m.ingredients ?? []).join('\n'),
@@ -86,6 +99,7 @@ export default function Home() {
   const [sheetType, setSheetType] = useState<SheetType>(null)
   const [sheetDay, setSheetDay] = useState<DayOfWeek | null>(null)
   const [activeMealTypes, setActiveMealTypes] = useState<MealType[]>(() => loadActiveMealTypes())
+  const [mealFocus, setMealFocus] = useState<MealFocusPrefs>(() => loadMealFocus())
   const [mealFilter, setMealFilter] = useState('all')
   const [groceryChecked, setGroceryChecked] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
@@ -193,6 +207,7 @@ export default function Home() {
           existingMealNames: meals.map(m => m.name),
           favoriteMealNames: meals.filter(m => m.isFavorite).map(m => m.name),
           activeMealTypes,
+          mealFocus,
         }),
       })
       if (!res.ok) {
@@ -321,6 +336,27 @@ export default function Home() {
     })
   }
 
+  const toggleMealFocusPreset = (id: MealFocusPresetId) => {
+    setMealFocus(prev => {
+      const next: MealFocusPrefs = {
+        ...prev,
+        presets: prev.presets.includes(id)
+          ? prev.presets.filter(p => p !== id)
+          : [...prev.presets, id],
+      }
+      saveMealFocus(next)
+      return next
+    })
+  }
+
+  const updateMealFocusCustom = (custom: string) => {
+    setMealFocus(prev => {
+      const next = { ...prev, custom }
+      saveMealFocus(next)
+      return next
+    })
+  }
+
   const handleImport = async () => {
     if (!importUrl) return
     setImporting(true)
@@ -352,6 +388,9 @@ export default function Home() {
             proteinG: String(meal.proteinG ?? ''),
             carbsG: String(meal.carbsG ?? ''),
             fatG: String(meal.fatG ?? ''),
+            notes: meal.notes ?? '',
+            servingSize: meal.servingSize ?? '',
+            servingWeight: meal.servingWeight ?? '',
             description: meal.description ?? '',
             instructions: meal.instructions ?? '',
             ingredients: (meal.ingredients ?? []).join('\n'),
@@ -405,6 +444,9 @@ export default function Home() {
       proteinG: parseInt(addForm.proteinG) || 0,
       carbsG: parseInt(addForm.carbsG) || 0,
       fatG: parseInt(addForm.fatG) || 0,
+      notes: addForm.notes,
+      servingSize: addForm.servingSize,
+      servingWeight: addForm.servingWeight,
       description: addForm.description,
       instructions: addForm.instructions,
       ingredients: addForm.ingredients.split('\n').filter(Boolean),
@@ -758,6 +800,40 @@ export default function Home() {
                 )
               })}
             </section>
+
+            <section className={styles.settingsSection}>
+              <h2 className={styles.settingsTitle}>Meal focus</h2>
+              <p className={styles.settingsDesc}>
+                Used when you tap Suggest this week. Pick one or more focuses, or add your own.
+              </p>
+              <div className={styles.focusChips}>
+                {MEAL_FOCUS_PRESETS.map(({ id, label }) => {
+                  const on = mealFocus.presets.includes(id)
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`${styles.chip} ${on ? styles.chipOn : ''}`}
+                      onClick={() => toggleMealFocusPreset(id)}
+                      aria-pressed={on}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <label className={styles.formLabel} htmlFor="meal-focus-custom">
+                Custom focus (optional)
+              </label>
+              <textarea
+                id="meal-focus-custom"
+                className={styles.focusCustom}
+                value={mealFocus.custom}
+                onChange={e => updateMealFocusCustom(e.target.value)}
+                rows={2}
+                placeholder="e.g. more fish, no pork, quick 20-min meals"
+              />
+            </section>
           </div>
         )}
 
@@ -854,6 +930,34 @@ export default function Home() {
                 <div><label className={styles.formLabel}>Carbs (g)</label><input type="number" value={addForm.carbsG} onChange={e => setAddForm({...addForm, carbsG: e.target.value})} placeholder="20" /></div>
                 <div><label className={styles.formLabel}>Fat (g)</label><input type="number" value={addForm.fatG} onChange={e => setAddForm({...addForm, fatG: e.target.value})} placeholder="10" /></div>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                <div>
+                  <label className={styles.formLabel}>Serving size</label>
+                  <input
+                    value={addForm.servingSize}
+                    onChange={e => setAddForm({ ...addForm, servingSize: e.target.value })}
+                    placeholder="4 servings"
+                  />
+                </div>
+                <div>
+                  <label className={styles.formLabel}>Weight per serving</label>
+                  <input
+                    value={addForm.servingWeight}
+                    onChange={e => setAddForm({ ...addForm, servingWeight: e.target.value })}
+                    placeholder="~350g"
+                  />
+                </div>
+              </div>
+
+              <label className={styles.formLabel}>Notes</label>
+              <textarea
+                value={addForm.notes}
+                onChange={e => setAddForm({ ...addForm, notes: e.target.value })}
+                rows={2}
+                placeholder="Prep tips, substitutions, who likes it…"
+                style={{ marginBottom: 12 }}
+              />
 
               <label className={styles.formLabel}>Description</label>
               <textarea value={addForm.description} onChange={e => setAddForm({...addForm, description: e.target.value})} rows={3} placeholder="What is this dish?" style={{ marginBottom: 12 }} />

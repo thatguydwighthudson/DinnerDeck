@@ -73,6 +73,19 @@ export default function MealDetailModal({
             {meal.proteinG}g protein · {meal.carbsG}g carbs · {meal.fatG}g fat
           </p>
 
+          {(meal.servingSize?.trim() || meal.servingWeight?.trim()) && (
+            <p className={styles.servingInfo}>
+              {[meal.servingSize?.trim(), meal.servingWeight?.trim()].filter(Boolean).join(' · ')}
+            </p>
+          )}
+
+          {meal.notes?.trim() ? (
+            <section className={styles.section}>
+              <h3 className={styles.sectionTitle}>Notes</h3>
+              <p className={styles.description}>{meal.notes}</p>
+            </section>
+          ) : null}
+
           {meal.description ? (
             <section className={styles.section}>
               <h3 className={styles.sectionTitle}>About</h3>

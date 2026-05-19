@@ -3,6 +3,7 @@
 import { DAY_LABELS, DayPlan, Meal, KidsMeal, PlannedMeal, type DayOfWeek } from '@/lib/types'
 import { MEAL_TYPE_LABELS, type MealType } from '@/lib/mealTypes'
 import { resolveSlotMeal, slotEmoji, slotIsFilled, slotTitle } from '@/lib/slotDisplay'
+import { formatMacroLine, sumDayMacros } from '@/lib/macros'
 import MealThumbnail from '@/components/MealThumbnail'
 import styles from './DayPlanScreen.module.css'
 
@@ -34,6 +35,7 @@ export default function DayPlanScreen({
 
   const dinnerPlan = getSlot('dinner')
   const kids = dinnerPlan?.kidsMealId ? kidsMeals.find(k => k.id === dinnerPlan.kidsMealId) : null
+  const dayMacros = sumDayMacros(day, activeMealTypes, weekPlan, meals)
 
   return (
     <div className={styles.wrap}>
@@ -91,6 +93,16 @@ export default function DayPlanScreen({
             </div>
           )
         })}
+      </div>
+
+      <div className={styles.macroBlock} aria-live="polite">
+        <span className={styles.macroLabel}>Day macros</span>
+        <p className={styles.macroLine}>{formatMacroLine(dayMacros)}</p>
+        {dayMacros.mealCount > 0 && (
+          <p className={styles.macroHint}>
+            {dayMacros.mealCount} meal{dayMacros.mealCount === 1 ? '' : 's'} · per serving estimates
+          </p>
+        )}
       </div>
 
       {activeMealTypes.includes('dinner') && (

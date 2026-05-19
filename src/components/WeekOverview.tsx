@@ -3,6 +3,7 @@
 import { DAYS, DAY_LABELS, DayPlan, Meal, type DayOfWeek } from '@/lib/types'
 import { MEAL_TYPE_LABELS, type MealType } from '@/lib/mealTypes'
 import { slotEmoji, slotIsFilled, slotTitle } from '@/lib/slotDisplay'
+import { formatMacroLine, sumWeekMacros } from '@/lib/macros'
 import MealThumbnail from '@/components/MealThumbnail'
 import styles from './WeekOverview.module.css'
 
@@ -25,6 +26,8 @@ export default function WeekOverview({
 }: Props) {
   const getSlot = (day: string, mealType: MealType) =>
     weekPlan.find(p => p.dayOfWeek === day && p.mealType === mealType)
+
+  const weekMacros = sumWeekMacros(activeMealTypes, weekPlan, meals)
 
   return (
     <div className={styles.wrap}>
@@ -60,6 +63,11 @@ export default function WeekOverview({
           </button>
         )
       })}
+      <div className={styles.weekMacroBlock} aria-live="polite">
+        <span className={styles.weekMacroLabel}>Week macros</span>
+        <p className={styles.weekMacroLine}>{formatMacroLine(weekMacros)}</p>
+      </div>
+
       {groceryMealCount > 0 && onGoGrocery && (
         <button type="button" className={styles.groceryBtn} onClick={onGoGrocery}>
           🛒 Build grocery list
