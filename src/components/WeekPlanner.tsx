@@ -95,7 +95,7 @@ export default function WeekPlanner({
                               '↩ Leftovers'
                             ) : meal ? (
                               <>
-                                <MealThumbnail emoji={meal.emoji} imageUrl={meal.imageUrl} size="sm" />
+                                <MealThumbnail emoji={meal.emoji} size="sm" />
                                 {meal.name}
                               </>
                             ) : (

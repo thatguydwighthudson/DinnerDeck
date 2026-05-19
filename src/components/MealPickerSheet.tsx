@@ -67,7 +67,7 @@ export default function MealPickerSheet({
               role="button"
               tabIndex={0}
             >
-              <MealThumbnail emoji={m.emoji} imageUrl={m.imageUrl} size="md" className={styles.sEmoji} />
+              <MealThumbnail emoji={m.emoji} size="md" className={styles.sEmoji} />
               <div className={styles.sInfo}>
                 <div className={styles.sName}>
                   {m.name}

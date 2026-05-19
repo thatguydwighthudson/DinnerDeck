@@ -160,16 +160,17 @@
   margin-top: 0;
 }
 
-.sourceLink {
-  display: inline-block;
+.sourceUrl {
+  display: block;
   font-size: 13px;
+  line-height: 1.45;
   color: var(--sage);
   font-weight: 500;
-  margin-top: 4px;
+  word-break: break-all;
   text-decoration: none;
 }
 
-.sourceLink:hover {
+.sourceUrl:hover {
   text-decoration: underline;
 }
 
@@ -197,6 +198,41 @@
 
 .altCard:hover {
   border-color: var(--sage-m);
+}
+
+.altCardOn {
+  border-color: var(--sage);
+  background: var(--sage-l);
+}
+
+button.altCard {
+  cursor: pointer;
+  font: inherit;
+}
+
+.altToggleBtn {
+  width: 100%;
+  background: var(--bg2);
+  color: var(--sage);
+  border: 0.5px solid var(--sage-m);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.updateBtn {
+  width: 100%;
+  background: var(--sage);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .altThumb {

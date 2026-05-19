@@ -1,5 +1,33 @@
 import type { AlternateRecipe } from '@/lib/types'
 
+function asHttpUrl(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed || !/^https?:\/\//i.test(trimmed)) return null
+  return trimmed
+}
+
+function normalizeAlternates(
+  alts: AlternateRecipe[] | undefined,
+  excludeUrl: string | null
+): AlternateRecipe[] | null {
+  if (!alts?.length) return null
+  const seen = new Set<string>()
+  if (excludeUrl) seen.add(excludeUrl)
+  const normalized: AlternateRecipe[] = []
+  for (const alt of alts) {
+    const url = asHttpUrl(alt.url)
+    if (!url || seen.has(url)) continue
+    seen.add(url)
+    normalized.push({
+      url,
+      imageUrl: null,
+      siteName: (alt.siteName || 'Recipe').trim() || 'Recipe',
+    })
+    if (normalized.length >= 2) break
+  }
+  return normalized.length ? normalized : null
+}
+
 export type RawMealSuggestion = {
   name: string
   emoji?: string
@@ -24,7 +52,10 @@ export function normalizeMealSuggestion(s: RawMealSuggestion) {
   const ingredients = (s.ingredients ?? []).filter(Boolean)
   const samItems = s.samItems ?? []
   const htItems = s.htItems ?? []
-  const imageUrl = s.imageUrl?.trim() || null
+  const alternates = normalizeAlternates(s.alternateRecipes, null)
+  const sourceUrl =
+    asHttpUrl(s.sourceUrl) ?? alternates?.[0]?.url ?? null
+  const alternateRecipes = normalizeAlternates(s.alternateRecipes, sourceUrl)
 
   return {
     name: s.name,
@@ -43,9 +74,9 @@ export function normalizeMealSuggestion(s: RawMealSuggestion) {
     ingredients: ingredients.length > 0 ? ingredients : [...samItems, ...htItems].filter(Boolean),
     samItems,
     htItems,
-    imageUrl: imageUrl && /^https?:\/\//i.test(imageUrl) ? imageUrl : null,
-    sourceUrl: s.sourceUrl?.trim() || null,
-    alternateRecipes: s.alternateRecipes?.length ? s.alternateRecipes : null,
+    imageUrl: null,
+    sourceUrl,
+    alternateRecipes,
     aiGenerated: true,
   }
 }

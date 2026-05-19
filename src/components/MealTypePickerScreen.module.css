@@ -84,16 +84,38 @@
   margin-top: 2px;
 }
 
-.infoBtn {
+.cardAssigned {
+  border-color: var(--sage);
+  background: var(--sage-l);
+}
+
+.plannedBadge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--sage);
+  vertical-align: middle;
+}
+
+.swapBtn {
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 8px 10px;
   background: var(--bg2);
   border: 0.5px solid var(--border2);
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--sage);
   cursor: pointer;
-  flex-shrink: 0;
+}
+
+.swapBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .altSection {

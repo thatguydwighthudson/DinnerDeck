@@ -92,7 +92,7 @@ export default function SuggestPreviewSheet({
                     role="button"
                     tabIndex={0}
                   >
-                    <MealThumbnail emoji={m.emoji} imageUrl={m.imageUrl} size="md" />
+                    <MealThumbnail emoji={m.emoji} size="md" />
                     <div className={previewStyles.cardBody}>
                       <div className={previewStyles.cardName}>{m.name}</div>
                       <div className={previewStyles.cardMacros}>

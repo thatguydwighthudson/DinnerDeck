@@ -8,7 +8,9 @@ import {
   MealHistory,
   GroupedSuggestions,
   MealSuggestion,
+  PlannedMeal,
   getWeekStart,
+  type AlternateRecipe,
   type DayOfWeek,
 } from '@/lib/types'
 import {
@@ -91,6 +93,9 @@ export default function Home() {
   const [importing, setImporting] = useState(false)
   const [importUrl, setImportUrl] = useState('')
   const [detailMeal, setDetailMeal] = useState<Meal | MealSuggestion | null>(null)
+  const [detailPick, setDetailPick] = useState<PickableMeal | null>(null)
+  const [detailSlot, setDetailSlot] = useState<{ day: DayOfWeek; mealType: MealType } | null>(null)
+  const [selectedAlternateUrl, setSelectedAlternateUrl] = useState<string | null>(null)
   const [editingMealId, setEditingMealId] = useState<number | null>(null)
   const [addForm, setAddForm] = useState(emptyMealForm)
 
@@ -190,7 +195,10 @@ export default function Home() {
           activeMealTypes,
         }),
       })
-      if (!res.ok) throw new Error('suggest failed')
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error((errBody as { error?: string }).error ?? 'suggest failed')
+      }
       const { suggestions } = (await res.json()) as { suggestions: GroupedSuggestions }
 
       const selections = activeMealTypes
@@ -209,31 +217,98 @@ export default function Home() {
       clearWeekSuggestions(weekStart)
       await Promise.all([fetchMeals(), fetchWeekPlan()])
       showToast('Week planned — meals are in your library; swap or remove any time')
-    } catch {
-      showToast('Something went wrong — try again')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong — try again'
+      showToast(msg === 'suggest failed' || msg === 'bulk failed' ? 'Something went wrong — try again' : msg)
     } finally {
       setSuggesting(false)
     }
   }
 
-  const handleAssignPick = (pick: PickableMeal) => {
-    if (!selectedDay || !selectedMealType) return
+  const mealFromPick = (pick: PickableMeal): Meal | MealSuggestion => {
+    if (pick.libraryId) return meals.find(m => m.id === pick.libraryId) ?? pick.meal
+    return pick.meal
+  }
+
+  const openPlanMealDetail = (pick: PickableMeal, slot?: { day: DayOfWeek; mealType: MealType }) => {
+    setDetailPick(pick)
+    setDetailSlot(slot ?? null)
+    setSelectedAlternateUrl(pick.meal.sourceUrl ?? null)
+    setDetailMeal(mealFromPick(pick))
+  }
+
+  const openDaySlotDetail = (mealType: MealType, meal: Meal | PlannedMeal) => {
+    if (!selectedDay) return
+    const plan = weekPlan.find(p => p.dayOfWeek === selectedDay && p.mealType === mealType)
+    const pick: PickableMeal = plan?.adultMealId
+      ? {
+          key: `lib-${plan.adultMealId}`,
+          source: 'library',
+          meal,
+          libraryId: plan.adultMealId,
+        }
+      : { key: `slot-${selectedDay}-${mealType}`, source: 'suggestion', meal }
+    openPlanMealDetail(pick, { day: selectedDay, mealType })
+  }
+
+  const applyAlternateToMeal = (meal: Meal | MealSuggestion, alt: AlternateRecipe) => {
+    const baseName = meal.name.replace(/\s*\([^)]+\)$/, '').trim()
+    return {
+      ...meal,
+      name: `${baseName} (${alt.siteName})`,
+      sourceUrl: alt.url,
+    }
+  }
+
+  const handleDetailAlternate = (alt: AlternateRecipe) => {
+    if (!detailMeal) return
+    setSelectedAlternateUrl(alt.url)
+    const updated = applyAlternateToMeal(detailMeal, alt)
+    setDetailMeal(updated)
+    if (detailPick) setDetailPick({ ...detailPick, meal: updated })
+  }
+
+  const handleDetailUpdate = () => {
+    if (!detailPick) return
+    const day = detailSlot?.day ?? selectedDay
+    const mealType = detailSlot?.mealType ?? selectedMealType
+    if (!day || !mealType) return
+    void assignPickToSlot(detailPick, day, mealType)
+    closeDetailModal()
+  }
+
+  const handleSwapMeal = (pick: PickableMeal) => {
+    handleAssignPick(pick)
+  }
+
+  const assignedMealIdForPicker =
+    selectedDay && selectedMealType
+      ? (weekPlan.find(p => p.dayOfWeek === selectedDay && p.mealType === selectedMealType)?.adultMealId ??
+        null)
+      : null
+
+  const assignPickToSlot = async (pick: PickableMeal, day: DayOfWeek, mealType: MealType) => {
     if (pick.source === 'library' && pick.libraryId) {
-      void assignSlot({
-        dayOfWeek: selectedDay,
-        mealType: selectedMealType,
+      await assignSlot({
+        dayOfWeek: day,
+        mealType,
         mode: 'library',
         mealId: pick.libraryId,
       })
       return
     }
-    void assignSlot({
-      dayOfWeek: selectedDay,
-      mealType: selectedMealType,
+    await assignSlot({
+      dayOfWeek: day,
+      mealType,
       mode: 'suggestion',
       meal: pick.meal,
       saveToLibrary: true,
     })
+  }
+
+  const handleAssignPick = (pick: PickableMeal) => {
+    if (!selectedDay || !selectedMealType) return
+    void assignPickToSlot(pick, selectedDay, selectedMealType)
   }
 
   const toggleMealTypeSetting = (type: MealType) => {
@@ -302,8 +377,15 @@ export default function Home() {
     setAddForm(emptyMealForm())
   }
 
-  const openEditMeal = (meal: Meal) => {
+  const closeDetailModal = () => {
     setDetailMeal(null)
+    setDetailPick(null)
+    setDetailSlot(null)
+    setSelectedAlternateUrl(null)
+  }
+
+  const openEditMeal = (meal: Meal) => {
+    closeDetailModal()
     setEditingMealId(meal.id)
     setAddForm(mealToForm(meal))
     setSheetType('addMeal')
@@ -356,7 +438,7 @@ export default function Home() {
       return
     }
     await fetch(`/api/meals?id=${meal.id}`, { method: 'DELETE' })
-    setDetailMeal(null)
+    closeDetailModal()
     fetchMeals()
     fetchWeekPlan()
     showToast(`"${meal.name}" removed from library`)
@@ -479,6 +561,7 @@ export default function Home() {
               setSelectedMealType(mt)
               setWeekNav('mealType')
             }}
+            onViewSlotMeal={openDaySlotDetail}
             onKidsPicker={() => {
               setSheetDay(selectedDay)
               setSheetType('kids')
@@ -503,8 +586,9 @@ export default function Home() {
             onAssignEatOut={() =>
               void assignSlot({ dayOfWeek: selectedDay, mealType: selectedMealType, mode: 'eat_out' })
             }
-            onAssign={handleAssignPick}
-            onViewDetails={setDetailMeal}
+            assignedMealId={assignedMealIdForPicker}
+            onSwap={handleSwapMeal}
+            onViewDetails={openPlanMealDetail}
           />
         )}
 
@@ -537,7 +621,7 @@ export default function Home() {
                   </h3>
                   {groupMeals.map(m => (
                 <div key={m.id} className={`${styles.mealItem} ${usedMealIds.has(m.id) ? styles.mealInUse : ''}`}>
-                  <MealThumbnail emoji={m.emoji} imageUrl={m.imageUrl} size="lg" className={styles.mealEmoji} />
+                  <MealThumbnail emoji={m.emoji} size="lg" className={styles.mealEmoji} />
                   <div className={styles.mealInfo} onClick={() => setDetailMeal(m)} role="button" tabIndex={0}>
                     <div className={styles.mealName}>{m.name} {m.aiGenerated && <span className={styles.aiBadge}>AI</span>}</div>
                     <div className={styles.mealTags}>
@@ -633,7 +717,7 @@ export default function Home() {
                       <div className={styles.historyWeekLabel}>Week of {new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                       {entries.map(h => (
                         <div key={h.id} className={styles.historyItem} onClick={() => setDetailMeal(h.meal)} role="button" tabIndex={0}>
-                          <MealThumbnail emoji={h.meal.emoji} imageUrl={h.meal.imageUrl} size="lg" className={styles.histEmoji} />
+                          <MealThumbnail emoji={h.meal.emoji} size="lg" className={styles.histEmoji} />
                           <div>
                             <div className={styles.histName}>{h.meal.name}</div>
                             <div className={styles.histMeta}>{h.dayOfWeek} · {h.servings} servings · {h.meal.proteinG}g protein</div>
@@ -795,9 +879,23 @@ export default function Home() {
       {detailMeal && (
         <MealDetailModal
           meal={detailMeal}
-          onClose={() => setDetailMeal(null)}
-          onEdit={detailInLibrary ? openEditFromDetail : undefined}
-          onDelete={detailInLibrary && detailMeal && 'id' in detailMeal ? () => handleDeleteMeal(detailMeal) : undefined}
+          onClose={closeDetailModal}
+          onEdit={detailInLibrary && !detailPick ? openEditFromDetail : undefined}
+          onDelete={
+            detailInLibrary && !detailPick && detailMeal && 'id' in detailMeal
+              ? () => handleDeleteMeal(detailMeal)
+              : undefined
+          }
+          onUpdate={
+            detailPick && (detailSlot || (selectedDay && selectedMealType)) ? handleDetailUpdate : undefined
+          }
+          updateLabel={
+            detailPick && (detailSlot || (selectedDay && selectedMealType))
+              ? `Update ${(detailSlot?.day ?? selectedDay)!} ${MEAL_TYPE_LABELS[(detailSlot?.mealType ?? selectedMealType)!]}`
+              : undefined
+          }
+          onSelectAlternative={detailPick ? handleDetailAlternate : undefined}
+          selectedAlternateUrl={selectedAlternateUrl}
         />
       )}
 

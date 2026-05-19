@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import { AlternateRecipe, Meal, MealSuggestion, PlannedMeal } from '@/lib/types'
 import MealThumbnail from '@/components/MealThumbnail'
 import styles from './MealDetailModal.module.css'
@@ -9,9 +12,23 @@ type Props = {
   onClose: () => void
   onEdit?: () => void
   onDelete?: () => void
+  onUpdate?: () => void
+  updateLabel?: string
+  onSelectAlternative?: (alt: AlternateRecipe) => void
+  selectedAlternateUrl?: string | null
 }
 
-export default function MealDetailModal({ meal, onClose, onEdit, onDelete }: Props) {
+export default function MealDetailModal({
+  meal,
+  onClose,
+  onEdit,
+  onDelete,
+  onUpdate,
+  updateLabel = 'Update day',
+  onSelectAlternative,
+  selectedAlternateUrl,
+}: Props) {
+  const [showAlternatives, setShowAlternatives] = useState(false)
   const aiGenerated = 'aiGenerated' in meal && meal.aiGenerated
   const ingredients = meal.ingredients ?? []
   const hasIngredients = ingredients.length > 0
@@ -19,12 +36,19 @@ export default function MealDetailModal({ meal, onClose, onEdit, onDelete }: Pro
   const alternates = (meal.alternateRecipes ?? []).filter(
     (a): a is AlternateRecipe => Boolean(a?.url)
   )
+  const canPickAlternates = Boolean(onSelectAlternative && alternates.length > 0)
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="meal-detail-title">
+      <div
+        className={styles.modal}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="meal-detail-title"
+      >
         <div className={styles.header}>
-          <MealThumbnail emoji={meal.emoji} imageUrl={meal.imageUrl} size="lg" className={styles.emoji} />
+          <MealThumbnail emoji={meal.emoji} size="lg" className={styles.emoji} />
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">
             ×
           </button>
@@ -36,9 +60,13 @@ export default function MealDetailModal({ meal, onClose, onEdit, onDelete }: Pro
           </h2>
 
           <div className={styles.tags}>
-            {meal.tags.includes('high-protein') && <span className={`${styles.tag} ${styles.tagP}`}>high protein</span>}
+            {meal.tags.includes('high-protein') && (
+              <span className={`${styles.tag} ${styles.tagP}`}>high protein</span>
+            )}
             {meal.isVeg && <span className={`${styles.tag} ${styles.tagV}`}>veg-friendly</span>}
-            {meal.tags.includes('low-carb') && <span className={`${styles.tag} ${styles.tagLc}`}>low carb</span>}
+            {meal.tags.includes('low-carb') && (
+              <span className={`${styles.tag} ${styles.tagLc}`}>low carb</span>
+            )}
           </div>
 
           <p className={styles.macros}>
@@ -110,13 +138,50 @@ export default function MealDetailModal({ meal, onClose, onEdit, onDelete }: Pro
             </section>
           )}
 
-          {meal.sourceUrl && (
-            <a className={styles.sourceLink} href={meal.sourceUrl} target="_blank" rel="noopener noreferrer">
-              View original recipe →
-            </a>
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Source</h3>
+            {meal.sourceUrl?.trim() ? (
+              <a
+                className={styles.sourceUrl}
+                href={meal.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {meal.sourceUrl}
+              </a>
+            ) : (
+              <p className={styles.muted}>No recipe link saved for this meal.</p>
+            )}
+          </section>
+
+          {canPickAlternates && (
+            <section className={styles.section}>
+              <button
+                type="button"
+                className={styles.altToggleBtn}
+                onClick={() => setShowAlternatives(v => !v)}
+              >
+                {showAlternatives ? 'Hide alternatives' : 'Find alternatives'}
+              </button>
+              {showAlternatives && (
+                <div className={styles.altRow}>
+                  {alternates.map(alt => (
+                    <button
+                      key={alt.url}
+                      type="button"
+                      className={`${styles.altCard} ${selectedAlternateUrl === alt.url ? styles.altCardOn : ''}`}
+                      onClick={() => onSelectAlternative!(alt)}
+                    >
+                      <MealThumbnail emoji={meal.emoji} size="md" className={styles.altThumb} />
+                      <span className={styles.altSite}>{alt.siteName}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
           )}
 
-          {alternates.length > 0 && (
+          {!canPickAlternates && alternates.length > 0 && (
             <section className={styles.section}>
               <h3 className={styles.sectionTitle}>Other versions</h3>
               <div className={styles.altRow}>
@@ -128,12 +193,7 @@ export default function MealDetailModal({ meal, onClose, onEdit, onDelete }: Pro
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <MealThumbnail
-                      emoji={meal.emoji}
-                      imageUrl={alt.imageUrl}
-                      size="md"
-                      className={styles.altThumb}
-                    />
+                    <MealThumbnail emoji={meal.emoji} size="md" className={styles.altThumb} />
                     <span className={styles.altSite}>{alt.siteName}</span>
                   </a>
                 ))}
@@ -141,8 +201,13 @@ export default function MealDetailModal({ meal, onClose, onEdit, onDelete }: Pro
             </section>
           )}
 
-          {(onEdit || onDelete) && (
+          {(onUpdate || onEdit || onDelete) && (
             <div className={styles.actions}>
+              {onUpdate && (
+                <button type="button" className={styles.updateBtn} onClick={onUpdate}>
+                  {updateLabel}
+                </button>
+              )}
               {onEdit && (
                 <button type="button" className={styles.editBtn} onClick={onEdit}>
                   Edit meal

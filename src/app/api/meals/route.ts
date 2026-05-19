@@ -3,7 +3,6 @@ import { and, arrayContains, asc, desc, eq, isNull } from 'drizzle-orm'
 import { normalizeMealType } from '@/lib/mealTypes'
 import { db } from '@/lib/db'
 import { meals, weekPlans } from '@/db/schema'
-import { attachMealImageAsync } from '@/lib/mealImage'
 
 const mealFields = [
   'name',
@@ -78,13 +77,11 @@ export async function POST(req: NextRequest) {
       samItems: body.samItems ?? [],
       htItems: body.htItems ?? [],
       sourceUrl: body.sourceUrl ?? null,
-      imageUrl: body.imageUrl ?? null,
+      imageUrl: null,
       alternateRecipes: body.alternateRecipes ?? null,
       aiGenerated: body.aiGenerated ?? false,
     })
     .returning()
-
-  attachMealImageAsync(meal.id, meal.name)
 
   return NextResponse.json(meal, { status: 201 })
 }

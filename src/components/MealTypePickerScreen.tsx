@@ -1,13 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import {
-  DAY_LABELS,
-  Meal,
-  MealSuggestion,
-  type AlternateRecipe,
-  type DayOfWeek,
-} from '@/lib/types'
+import { DAY_LABELS, Meal, MealSuggestion, type DayOfWeek } from '@/lib/types'
 import { MEAL_TYPE_LABELS, type MealType } from '@/lib/mealTypes'
 import MealThumbnail from '@/components/MealThumbnail'
 import styles from './MealTypePickerScreen.module.css'
@@ -24,12 +17,13 @@ type Props = {
   mealType: MealType
   suggestions: MealSuggestion[]
   libraryMeals: Meal[]
+  assignedMealId: number | null
   assigning: boolean
   onBack: () => void
   onAssignLeftover: () => void
   onAssignEatOut: () => void
-  onAssign: (pick: PickableMeal) => void
-  onViewDetails: (meal: MealSuggestion | Meal) => void
+  onSwap: (pick: PickableMeal) => void
+  onViewDetails: (pick: PickableMeal) => void
 }
 
 function toSuggestion(m: Meal): MealSuggestion {
@@ -57,41 +51,14 @@ export default function MealTypePickerScreen({
   mealType,
   suggestions,
   libraryMeals,
+  assignedMealId,
   assigning,
   onBack,
   onAssignLeftover,
   onAssignEatOut,
-  onAssign,
+  onSwap,
   onViewDetails,
 }: Props) {
-  const [selected, setSelected] = useState<PickableMeal | null>(null)
-  const [altPick, setAltPick] = useState<AlternateRecipe | null>(null)
-
-  const selectPick = (pick: PickableMeal) => {
-    setSelected(pick)
-    setAltPick(null)
-  }
-
-  const applyAlternate = (alt: AlternateRecipe) => {
-    if (!selected) return
-    const base = selected.meal
-    setAltPick(alt)
-    setSelected({
-      ...selected,
-      meal: {
-        ...base,
-        name: `${base.name} (${alt.siteName})`,
-        imageUrl: alt.imageUrl ?? base.imageUrl,
-        sourceUrl: alt.url,
-      },
-    })
-  }
-
-  const handleAddToWeek = () => {
-    if (!selected) return
-    onAssign(selected)
-  }
-
   return (
     <div className={styles.wrap}>
       <button type="button" className={styles.back} onClick={onBack}>
@@ -115,9 +82,10 @@ export default function MealTypePickerScreen({
             <MealOptionCard
               key={`s-${i}-${m.name}`}
               pick={{ key: `s-${i}`, source: 'suggestion', meal: m }}
-              selected={selected}
-              onSelect={selectPick}
+              isAssigned={false}
+              assigning={assigning}
               onViewDetails={onViewDetails}
+              onSwap={onSwap}
             />
           ))}
         </section>
@@ -130,44 +98,13 @@ export default function MealTypePickerScreen({
             <MealOptionCard
               key={`lib-${m.id}`}
               pick={{ key: `lib-${m.id}`, source: 'library', meal: toSuggestion(m), libraryId: m.id }}
-              selected={selected}
-              onSelect={selectPick}
+              isAssigned={assignedMealId === m.id}
+              assigning={assigning}
               onViewDetails={onViewDetails}
+              onSwap={onSwap}
             />
           ))}
         </section>
-      )}
-
-      {selected && (selected.meal.alternateRecipes?.length ?? 0) > 0 && (
-        <section className={styles.altSection}>
-          <h3 className={styles.sectionTitle}>Other versions</h3>
-          <div className={styles.altRow}>
-            {selected.meal.alternateRecipes!.map(alt => (
-              <button
-                key={alt.url}
-                type="button"
-                className={`${styles.altCard} ${altPick?.url === alt.url ? styles.altCardOn : ''}`}
-                onClick={() => applyAlternate(alt)}
-              >
-                <MealThumbnail emoji={selected.meal.emoji} imageUrl={alt.imageUrl} size="md" />
-                <span>{alt.siteName}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {selected && (
-        <div className={styles.footer}>
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            disabled={assigning}
-            onClick={handleAddToWeek}
-          >
-            {assigning ? 'Saving…' : `Add to ${day}`}
-          </button>
-        </div>
       )}
     </div>
   )
@@ -175,41 +112,52 @@ export default function MealTypePickerScreen({
 
 function MealOptionCard({
   pick,
-  selected,
-  onSelect,
+  isAssigned,
+  assigning,
   onViewDetails,
+  onSwap,
 }: {
   pick: PickableMeal
-  selected: PickableMeal | null
-  onSelect: (p: PickableMeal) => void
-  onViewDetails: (m: MealSuggestion | Meal) => void
+  isAssigned: boolean
+  assigning: boolean
+  onViewDetails: (p: PickableMeal) => void
+  onSwap: (p: PickableMeal) => void
 }) {
   const m = pick.meal
-  const on = selected?.key === pick.key
   return (
     <div
-      className={`${styles.card} ${on ? styles.cardOn : ''}`}
-      onClick={() => onSelect(pick)}
+      className={`${styles.card} ${isAssigned ? styles.cardAssigned : ''}`}
+      onClick={() => onViewDetails(pick)}
       role="button"
       tabIndex={0}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onViewDetails(pick)
+        }
+      }}
     >
-      <MealThumbnail emoji={m.emoji} imageUrl={m.imageUrl} size="md" />
+      <MealThumbnail emoji={m.emoji} size="md" />
       <div className={styles.cardBody}>
-        <div className={styles.cardName}>{m.name}</div>
+        <div className={styles.cardName}>
+          {m.name}
+          {isAssigned && <span className={styles.plannedBadge}>Planned</span>}
+        </div>
         <div className={styles.cardMacros}>
           {m.proteinG}g protein · {m.carbsG}g carbs · {m.fatG}g fat
         </div>
       </div>
       <button
         type="button"
-        className={styles.infoBtn}
+        className={styles.swapBtn}
+        disabled={assigning}
         onClick={e => {
           e.stopPropagation()
-          onViewDetails(m)
+          onSwap(pick)
         }}
-        aria-label="Details"
+        aria-label={isAssigned ? 'Currently planned' : 'Swap to this meal'}
       >
-        ⓘ
+        {isAssigned ? '✓' : 'Swap'}
       </button>
     </div>
   )

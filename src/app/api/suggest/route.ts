@@ -29,11 +29,15 @@ ${typeContext}
 Existing meals in their library (do NOT suggest these again): ${existingMealNames.join(', ') || 'none yet'}
 Their favorites for reference: ${favoriteMealNames.join(', ') || 'none yet'}
 
-Use web_search to find a real, publicly accessible food photo for each dish before you finalize your answer.
+Use web_search for each dish to find:
+1. A real recipe page URL (the primary source you based the meal on)
+2. Up to 2 alternate recipe pages for the same dish on other reputable sites
+
+Do not return image URLs — we display each meal with an emoji only. Pick a fitting single emoji per dish.
 
 For each meal return a JSON object with ALL of these required fields:
 - name: string (short, appealing)
-- emoji: string (single emoji that represents the dish)
+- emoji: string (REQUIRED — one emoji that clearly represents the dish)
 - tags: array of strings from ["high-protein", "low-carb", "balanced", "vegetarian"]
 - isVeg: boolean
 - proteinG: number (per serving, realistic)
@@ -42,14 +46,20 @@ For each meal return a JSON object with ALL of these required fields:
 - description: string (REQUIRED — 2-3 full sentences about the dish; never empty)
 - instructions: string (REQUIRED — numbered or step-by-step cooking directions, 4-8 clear steps for a weeknight)
 - ingredients: array of strings (REQUIRED — 6-12 ingredients with amounts; never empty)
-- alternateRecipes: optional array of up to 2 objects { url, imageUrl, siteName } for the same dish on other recipe sites
+- sourceUrl: string (REQUIRED — full https URL to a real recipe page for this dish from web_search; not an image URL)
+- alternateRecipes: array of up to 2 objects { url, siteName } for the SAME dish on different recipe sites (urls must differ from sourceUrl)
 - samItems: array of strings (bulk at Sam's Club)
 - htItems: array of strings (fresh/small at Harris Teeter)
-- imageUrl: string or null (direct image URL — jpg, png, or webp — from web_search; null only if truly unavailable)
 
-Every meal MUST include a non-empty description, non-empty instructions, at least 6 ingredients, and imageUrl whenever possible.
+Every meal MUST include sourceUrl, a non-empty description, non-empty instructions, at least 6 ingredients, and a distinct emoji.
 
 Respond ONLY with a valid JSON array of 5 meal objects. No markdown, no explanation.`
+}
+
+function blockSummary(message: Anthropic.Message): string {
+  return message.content
+    .map((b: Anthropic.ContentBlock) => (b.type === 'text' ? `text(${b.text.length})` : b.type))
+    .join(', ')
 }
 
 async function suggestForMealType(
@@ -57,16 +67,43 @@ async function suggestForMealType(
   existingMealNames: string[],
   favoriteMealNames: string[]
 ) {
-  const message = await client.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 4000,
-    tools: WEB_SEARCH_TOOLS,
-    messages: [{ role: 'user', content: buildPrompt(mealType, existingMealNames, favoriteMealNames) }],
-  })
+  const basePrompt = buildPrompt(mealType, existingMealNames, favoriteMealNames)
+  let lastError: unknown
 
-  const text = extractTextFromMessage(message)
-  const suggestions = parseJsonFromText<RawMealSuggestion[]>(text)
-  return suggestions.map(normalizeMealSuggestion)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const useWebSearch = attempt < 3
+    const prompt = useWebSearch
+      ? basePrompt
+      : `${basePrompt}\n\nDo not use web search. Respond with ONLY a valid JSON array of exactly 5 meal objects. sourceUrl may be null only if truly unavailable.`
+    try {
+      const message = await client.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 8192,
+        ...(useWebSearch ? { tools: WEB_SEARCH_TOOLS } : {}),
+        messages: [{ role: 'user', content: prompt }],
+      })
+
+      const text = extractTextFromMessage(message)
+      if (!text.trim()) {
+        throw new Error(`Empty model text (${blockSummary(message)})`)
+      }
+
+      const suggestions = parseJsonFromText<RawMealSuggestion[]>(text)
+      if (!Array.isArray(suggestions) || suggestions.length === 0) {
+        throw new Error('Model returned an empty meal array')
+      }
+
+      return suggestions.map(normalizeMealSuggestion)
+    } catch (err) {
+      lastError = err
+      console.warn(
+        `Suggest ${mealType} attempt ${attempt}/3 failed${useWebSearch ? '' : ' (no web search)'}:`,
+        err instanceof Error ? err.message : err
+      )
+    }
+  }
+
+  throw lastError ?? new Error('Failed to generate suggestions')
 }
 
 export async function POST(req: NextRequest) {
@@ -87,17 +124,25 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const entries = await Promise.all(
-      types.map(async mealType => {
-        const items = await suggestForMealType(mealType, existingMealNames, favoriteMealNames)
-        return [mealType, items] as const
-      })
-    )
+    const entries: [MealType, Awaited<ReturnType<typeof suggestForMealType>>][] = []
+    for (const mealType of types) {
+      const items = await suggestForMealType(mealType, existingMealNames, favoriteMealNames)
+      entries.push([mealType, items])
+    }
 
     const suggestions = Object.fromEntries(entries)
     return NextResponse.json({ suggestions })
   } catch (err) {
     console.error('Suggest error:', err)
-    return NextResponse.json({ error: 'Failed to generate suggestions' }, { status: 500 })
+    const message = err instanceof Error ? err.message : 'Failed to generate suggestions'
+    const isAuth = message.includes('api_key') || message.includes('authentication')
+    return NextResponse.json(
+      {
+        error: isAuth
+          ? 'API key missing or invalid — check ANTHROPIC_API_KEY in .env'
+          : message || 'Failed to generate suggestions',
+      },
+      { status: isAuth ? 503 : 500 }
+    )
   }
 }

@@ -2,7 +2,7 @@
 
 import { DAYS, DAY_LABELS, DayPlan, Meal, type DayOfWeek } from '@/lib/types'
 import { MEAL_TYPE_LABELS, type MealType } from '@/lib/mealTypes'
-import { slotEmoji, slotImageUrl, slotIsFilled, slotTitle } from '@/lib/slotDisplay'
+import { slotEmoji, slotIsFilled, slotTitle } from '@/lib/slotDisplay'
 import MealThumbnail from '@/components/MealThumbnail'
 import styles from './WeekOverview.module.css'
 
@@ -49,11 +49,7 @@ export default function WeekOverview({
                   if (!title) return null
                   return (
                     <li key={mealType} className={styles.mealLine}>
-                      <MealThumbnail
-                        emoji={slotEmoji(plan, meals)}
-                        imageUrl={slotImageUrl(plan, meals)}
-                        size="sm"
-                      />
+                      <MealThumbnail emoji={slotEmoji(plan, meals)} size="sm" />
                       <span className={styles.mealType}>{MEAL_TYPE_LABELS[mealType]}</span>
                       <span className={styles.mealTitle}>{title}</span>
                     </li>

@@ -89,20 +89,18 @@ For the meal object extract:
 - proteinG, carbsG, fatG (per serving estimates)
 - description (2-4 sentences), instructions (step-by-step cooking, 4-8 steps), ingredients (with amounts)
 - samItems (bulk/Sam's Club), htItems (fresh/Harris Teeter)
-- imageUrl: from the page's og:image meta tag when available (direct jpg/png/webp preferred)
 - sourceUrl: "${url}"
 
 For each entry in alternateRecipes (exactly 2):
 - url: full recipe page URL on a different site
-- imageUrl: og:image from that page when available
 - siteName: og:site_name or a readable site name from the domain
 
 Respond ONLY with valid JSON in this exact shape (no markdown):
 {
   "meal": { ... },
   "alternateRecipes": [
-    { "url": "...", "imageUrl": "...", "siteName": "..." },
-    { "url": "...", "imageUrl": "...", "siteName": "..." }
+    { "url": "...", "siteName": "..." },
+    { "url": "...", "siteName": "..." }
   ]
 }`
 
@@ -138,10 +136,9 @@ Respond ONLY with valid JSON in this exact shape (no markdown):
     const ingredients = asStringList(m.ingredients)
     const samItems = asStringList(m.samItems)
     const htItems = asStringList(m.htItems)
-    const imageUrl = m.imageUrl?.trim() || null
     const alternateRecipes = (extracted.alternateRecipes ?? []).slice(0, 2).map(alt => ({
       url: alt.url,
-      imageUrl: alt.imageUrl?.trim() || null,
+      imageUrl: null,
       siteName: alt.siteName || 'Recipe',
     }))
 
@@ -165,7 +162,7 @@ Respond ONLY with valid JSON in this exact shape (no markdown):
         samItems,
         htItems,
         sourceUrl: m.sourceUrl ?? url,
-        imageUrl: imageUrl && /^https?:\/\//i.test(imageUrl) ? imageUrl : null,
+        imageUrl: null,
         alternateRecipes: alternateRecipes.length ? alternateRecipes : null,
         mealType,
         aiGenerated: false,
