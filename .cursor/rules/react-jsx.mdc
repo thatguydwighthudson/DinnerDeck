@@ -1,0 +1,32 @@
+---
+description: Prevent broken JSX/HTML in React components
+globs: src/**/*.tsx
+alwaysApply: false
+---
+
+# React JSX safety (DinnerDeck)
+
+## Valid tags only
+
+- Use standard HTML elements in JSX: `div`, `span`, `button`, `p`, `h1`–`h6`, etc.
+- **Never** invent tags like `motion.div`, `motion.span`, or mismatched open/close pairs (`<motion.div>` … `</div>`).
+
+## Where UI lives
+
+- Bottom sheets / pickers: edit `src/components/MealPickerSheet.tsx`, `KidsPickerSheet.tsx`, or `sheets.module.css` — not large inline blocks in `page.tsx`.
+- After any JSX edit in `src/**/*.tsx`, run `npm run check` before finishing.
+
+## Sheet pattern
+
+```tsx
+<div className={styles.overlay} onClick={onClose}>
+  <div className={styles.sheet} onClick={e => e.stopPropagation()}>
+    ...
+  </div>
+</div>
+```
+
+## Nested controls
+
+- Do not put `<button>` inside `<button>`.
+- Info/actions inside a row: use a `div` row with `onClick`, and a separate `<button type="button">` with `stopPropagation` for secondary actions.

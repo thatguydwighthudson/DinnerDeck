@@ -1,0 +1,20 @@
+/** Funny, affirming copy while AI meal ideas are loading. */
+export const MEAL_GENERATING_MESSAGES = [
+  '"What\'s for dinner?" is not a hobby. We\'re handling it.',
+  'You\'ve done enough "I don\'t know, what do you want?" for one lifetime.',
+  'Turning pantry-stare into an actual plan. You\'ve got this.',
+  'The nightly hunger meeting is adjourned — ideas incoming.',
+  'Saving you from the 47th scroll through saved recipes.',
+  'Because "ugh, what should we eat?" deserves a better answer.',
+  'Your brain called — it wants a break from picking meals every day.',
+  'Less decision fatigue. More "oh yeah, that sounds good."',
+  'Wrestling with weeknight dinner so you don\'t have to.',
+  'The hardest part of cooking is deciding. We\'re on that part.',
+  'Proof that meal planning can be someone else\'s problem for once.',
+  'Converting hangry indecision into meals you can trust.',
+  'Negotiating with the fridge on your behalf. Be right back.',
+  'You\'re allowed to not think about food for five whole minutes.',
+  'Turning "IDK you pick" energy into done energy.',
+  'Hunting ideas while you enjoy not being the family menu committee.',
+  'Daily meal picks are annoying. You showing up anyway is the win.',
+] as const

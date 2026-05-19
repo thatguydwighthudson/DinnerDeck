@@ -1,0 +1,74 @@
+-- DinnerDeck schema (PostgreSQL)
+-- Matches src/db/schema.ts
+
+CREATE TABLE IF NOT EXISTS "Meal" (
+  "id" SERIAL PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "emoji" TEXT NOT NULL DEFAULT '🍽',
+  "tags" TEXT[] NOT NULL DEFAULT '{}',
+  "isVeg" BOOLEAN NOT NULL DEFAULT FALSE,
+  "isFavorite" BOOLEAN NOT NULL DEFAULT FALSE,
+  "proteinG" INTEGER NOT NULL DEFAULT 0,
+  "carbsG" INTEGER NOT NULL DEFAULT 0,
+  "fatG" INTEGER NOT NULL DEFAULT 0,
+  "description" TEXT NOT NULL DEFAULT '',
+  "instructions" TEXT NOT NULL DEFAULT '',
+  "ingredients" TEXT[] NOT NULL DEFAULT '{}',
+  "samItems" TEXT[] NOT NULL DEFAULT '{}',
+  "htItems" TEXT[] NOT NULL DEFAULT '{}',
+  "source_url" TEXT,
+  "image_url" TEXT,
+  "alternate_recipes" JSONB,
+  "meal_type" TEXT NOT NULL DEFAULT 'dinner',
+  "aiGenerated" BOOLEAN NOT NULL DEFAULT FALSE,
+  "deletedAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "KidsMeal" (
+  "id" SERIAL PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "emoji" TEXT NOT NULL DEFAULT '🍽',
+  "note" TEXT NOT NULL DEFAULT '',
+  "liked" BOOLEAN NOT NULL DEFAULT FALSE,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "WeekPlan" (
+  "id" SERIAL PRIMARY KEY,
+  "weekStart" TIMESTAMP(3) NOT NULL,
+  "dayOfWeek" TEXT NOT NULL,
+  "meal_type" TEXT NOT NULL DEFAULT 'dinner',
+  "isLeftover" BOOLEAN NOT NULL DEFAULT FALSE,
+  "is_eat_out" BOOLEAN NOT NULL DEFAULT FALSE,
+  "planned_meal" JSONB,
+  "servings" INTEGER NOT NULL DEFAULT 4,
+  "adultMealId" INTEGER REFERENCES "Meal"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+  "kidsMealId" INTEGER REFERENCES "KidsMeal"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+  "kidsAdultId" INTEGER REFERENCES "Meal"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "WeekPlan_weekStart_dayOfWeek_mealType_key"
+  ON "WeekPlan" ("weekStart", "dayOfWeek", "meal_type");
+
+CREATE TABLE IF NOT EXISTS "MealHistory" (
+  "id" SERIAL PRIMARY KEY,
+  "mealId" INTEGER NOT NULL REFERENCES "Meal"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  "cookedOn" TIMESTAMP(3) NOT NULL,
+  "weekStart" TIMESTAMP(3) NOT NULL,
+  "dayOfWeek" TEXT NOT NULL,
+  "servings" INTEGER NOT NULL DEFAULT 4,
+  "notes" TEXT NOT NULL DEFAULT '',
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "ImportedUrl" (
+  "id" SERIAL PRIMARY KEY,
+  "url" TEXT NOT NULL UNIQUE,
+  "mealId" INTEGER,
+  "rawJson" JSONB,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

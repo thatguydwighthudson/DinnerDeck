@@ -1,0 +1,27 @@
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: flex; align-items: flex-end; }
+.sheet { background: var(--bg); border-radius: 16px 16px 0 0; width: 100%; max-height: 80vh; overflow-y: auto; }
+.sheetHandle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 10px auto 12px; }
+.sheetTitle { font-size: 15px; font-weight: 500; padding: 0 16px 12px; border-bottom: 0.5px solid var(--border); }
+.sheetItem { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--border); cursor: pointer; }
+.sheetItem:last-child { border-bottom: none; }
+.sheetSelected { background: var(--sage-l); }
+.sheetFav { background: #FBF6E8; }
+.sheetFav.sheetSelected { background: var(--sage-l); }
+.sheetFavBadge { color: #B8902A; font-size: 14px; margin-left: 6px; }
+.sheetFavLabel { color: #B8902A; font-weight: 500; }
+.sEmoji { font-size: 22px; flex-shrink: 0; }
+.sInfo { flex: 1; }
+.sName { font-size: 14px; font-weight: 500; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+.sSub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.sCheck { color: var(--sage); font-size: 16px; }
+.infoBtn {
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  color: var(--sage);
+  cursor: pointer;
+  flex-shrink: 0;
+}

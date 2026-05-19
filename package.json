@@ -1,0 +1,34 @@
+{
+  "name": "dinnerdeck",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3002",
+    "dev:clean": "rm -rf .next && next dev -p 3002",
+    "lint": "next lint",
+    "check": "bash scripts/check-jsx.sh && tsc --noEmit && next lint",
+    "build": "npm run check && next build",
+    "start": "next start -p 3002",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/db/seed.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@neondatabase/serverless": "^0.10.4",
+    "drizzle-orm": "^0.38.3",
+    "next": "14.2.3",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "drizzle-kit": "^0.30.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.3",
+    "tsx": "^4.11.0",
+    "typescript": "^5"
+  }
+}
