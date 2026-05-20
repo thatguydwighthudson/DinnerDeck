@@ -6,7 +6,7 @@ export const WEB_SEARCH_TOOLS = [
 ] as unknown as Anthropic.Messages.MessageCreateParams['tools']
 
 /** Fast model for meal suggestions and lighter tasks. */
-export const CLAUDE_MODEL = 'claude-haiku-4-20250514'
+export const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'
 
 export function extractTextFromMessage(message: Anthropic.Message): string {
   return message.content
@@ -15,16 +15,63 @@ export function extractTextFromMessage(message: Anthropic.Message): string {
     .join('\n')
 }
 
+/** First balanced `{...}` or `[...]` slice (avoids greedy-regex trailing junk). */
+export function extractFirstJsonSubstring(raw: string): string | null {
+  const stripped = raw.replace(/```json|```/gi, '').trim()
+  const objStart = stripped.indexOf('{')
+  const arrStart = stripped.indexOf('[')
+  let start = -1
+  let openChar = ''
+  let closeChar = ''
+  if (objStart >= 0 && (arrStart < 0 || objStart <= arrStart)) {
+    start = objStart
+    openChar = '{'
+    closeChar = '}'
+  } else if (arrStart >= 0) {
+    start = arrStart
+    openChar = '['
+    closeChar = ']'
+  }
+  if (start < 0) return null
+
+  let depth = 0
+  let inString = false
+  let escaped = false
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i]
+    if (inString) {
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (ch === '\\') {
+        escaped = true
+        continue
+      }
+      if (ch === '"') inString = false
+      continue
+    }
+    if (ch === '"') {
+      inString = true
+      continue
+    }
+    if (ch === openChar) depth++
+    if (ch === closeChar) {
+      depth--
+      if (depth === 0) return stripped.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
 export function parseJsonFromText<T>(raw: string): T {
-  const stripped = raw.replace(/```json|```/g, '').trim()
+  const stripped = raw.replace(/```json|```/gi, '').trim()
   try {
     return JSON.parse(stripped) as T
   } catch {
-    const objectMatch = stripped.match(/\{[\s\S]*\}/)
-    if (objectMatch) return JSON.parse(objectMatch[0]) as T
-    const arrayMatch = stripped.match(/\[[\s\S]*\]/)
-    if (arrayMatch) return JSON.parse(arrayMatch[0]) as T
-    throw new Error('No JSON found in model response')
+    const slice = extractFirstJsonSubstring(raw)
+    if (!slice) throw new Error('No JSON found in model response')
+    return JSON.parse(slice) as T
   }
 }
 

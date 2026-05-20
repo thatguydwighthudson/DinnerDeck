@@ -1,7 +1,12 @@
 'use client'
 
 import { DAY_LABELS, Meal, MealSuggestion, type DayOfWeek } from '@/lib/types'
-import { MEAL_TYPE_LABELS, type MealType } from '@/lib/mealTypes'
+import {
+  MEAL_TYPE_LABELS,
+  suggestIdeasLabel,
+  supportsMealTypeIdeasSuggest,
+  type MealType,
+} from '@/lib/mealTypes'
 import MealThumbnail from '@/components/MealThumbnail'
 import styles from './MealTypePickerScreen.module.css'
 
@@ -19,9 +24,11 @@ type Props = {
   libraryMeals: Meal[]
   assignedMealId: number | null
   assigning: boolean
+  suggesting?: boolean
   onBack: () => void
   onAssignLeftover: () => void
   onAssignEatOut: () => void
+  onSuggestIdeas?: () => void
   onSwap: (pick: PickableMeal) => void
   onViewDetails: (pick: PickableMeal) => void
 }
@@ -52,12 +59,17 @@ export default function MealTypePickerScreen({
   libraryMeals,
   assignedMealId,
   assigning,
+  suggesting = false,
   onBack,
   onAssignLeftover,
   onAssignEatOut,
+  onSuggestIdeas,
   onSwap,
   onViewDetails,
 }: Props) {
+  const canSuggest = supportsMealTypeIdeasSuggest(mealType) && Boolean(onSuggestIdeas)
+  const busy = assigning || suggesting
+
   return (
     <div className={styles.wrap}>
       <button type="button" className={styles.back} onClick={onBack}>
@@ -66,29 +78,13 @@ export default function MealTypePickerScreen({
       <h2 className={styles.title}>{MEAL_TYPE_LABELS[mealType]}</h2>
 
       <section className={styles.quick}>
-        <button type="button" className={styles.quickBtn} onClick={onAssignLeftover} disabled={assigning}>
+        <button type="button" className={styles.quickBtn} onClick={onAssignLeftover} disabled={busy}>
           ↩ Leftovers
         </button>
-        <button type="button" className={styles.quickBtn} onClick={onAssignEatOut} disabled={assigning}>
+        <button type="button" className={styles.quickBtn} onClick={onAssignEatOut} disabled={busy}>
           🍽 Eat out
         </button>
       </section>
-
-      {suggestions.length > 0 && (
-        <section>
-          <h3 className={styles.sectionTitle}>This week&apos;s suggestions</h3>
-          {suggestions.map((m, i) => (
-            <MealOptionCard
-              key={`s-${i}-${m.name}`}
-              pick={{ key: `s-${i}`, source: 'suggestion', meal: m }}
-              isAssigned={false}
-              assigning={assigning}
-              onViewDetails={onViewDetails}
-              onSwap={onSwap}
-            />
-          ))}
-        </section>
-      )}
 
       {libraryMeals.length > 0 && (
         <section>
@@ -98,12 +94,55 @@ export default function MealTypePickerScreen({
               key={`lib-${m.id}`}
               pick={{ key: `lib-${m.id}`, source: 'library', meal: toSuggestion(m), libraryId: m.id }}
               isAssigned={assignedMealId === m.id}
-              assigning={assigning}
+              idleAction={assignedMealId ? 'swap' : 'add'}
+              assigning={busy}
               onViewDetails={onViewDetails}
               onSwap={onSwap}
             />
           ))}
         </section>
+      )}
+
+      {canSuggest && (
+        <section>
+          {suggestions.length > 0 ? (
+            <>
+              <h3 className={styles.sectionTitle}>From catalog</h3>
+              {suggestions.map((m, i) => (
+                <MealOptionCard
+                  key={`s-${i}-${m.name}`}
+                  pick={{ key: `s-${i}`, source: 'suggestion', meal: m }}
+                  isAssigned={false}
+                  idleAction="add"
+                  assigning={busy}
+                  onViewDetails={onViewDetails}
+                  onSwap={onSwap}
+                />
+              ))}
+              <button
+                type="button"
+                className={styles.suggestAgainBtn}
+                onClick={onSuggestIdeas}
+                disabled={busy}
+              >
+                {suggesting ? '⏳ Finding ideas…' : `More ${MEAL_TYPE_LABELS[mealType].toLowerCase()} ideas`}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className={styles.suggestBtn}
+              onClick={onSuggestIdeas}
+              disabled={busy}
+            >
+              {suggesting ? '⏳ Finding ideas…' : `✨ ${suggestIdeasLabel(mealType)}`}
+            </button>
+          )}
+        </section>
+      )}
+
+      {libraryMeals.length === 0 && suggestions.length === 0 && !canSuggest && (
+        <p className={styles.emptyHint}>No {MEAL_TYPE_LABELS[mealType].toLowerCase()} meals in your library yet.</p>
       )}
     </div>
   )
@@ -112,17 +151,26 @@ export default function MealTypePickerScreen({
 function MealOptionCard({
   pick,
   isAssigned,
+  idleAction = 'swap',
   assigning,
   onViewDetails,
   onSwap,
 }: {
   pick: PickableMeal
   isAssigned: boolean
+  idleAction?: 'add' | 'swap'
   assigning: boolean
   onViewDetails: (p: PickableMeal) => void
   onSwap: (p: PickableMeal) => void
 }) {
   const m = pick.meal
+  const actionLabel = isAssigned ? '✓' : idleAction === 'add' ? 'Add' : 'Swap'
+  const actionAria = isAssigned
+    ? 'Currently planned'
+    : idleAction === 'add'
+      ? 'Add to this day'
+      : 'Swap to this meal'
+
   return (
     <div
       className={`${styles.card} ${isAssigned ? styles.cardAssigned : ''}`}
@@ -154,9 +202,9 @@ function MealOptionCard({
           e.stopPropagation()
           onSwap(pick)
         }}
-        aria-label={isAssigned ? 'Currently planned' : 'Swap to this meal'}
+        aria-label={actionAria}
       >
-        {isAssigned ? '✓' : 'Swap'}
+        {actionLabel}
       </button>
     </div>
   )

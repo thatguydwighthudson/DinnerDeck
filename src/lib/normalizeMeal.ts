@@ -1,3 +1,30 @@
+function asText(value: unknown): string {
+  if (typeof value === 'string') return value.trim()
+  if (Array.isArray(value)) return value.map(String).join('\n').trim()
+  if (value == null) return ''
+  return String(value).trim()
+}
+
+function asStringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String).map(s => s.trim()).filter(Boolean)
+  if (typeof value === 'string') {
+    return value
+      .split(/\n|,/)
+      .map(s => s.trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
+function asNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.round(value)
+  if (typeof value === 'string') {
+    const n = parseInt(value.replace(/[^\d]/g, ''), 10)
+    return Number.isFinite(n) ? n : 0
+  }
+  return 0
+}
+
 function asHttpUrl(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
   if (!trimmed || !/^https?:\/\//i.test(trimmed)) return null
@@ -26,30 +53,33 @@ export type RawMealSuggestion = {
 }
 
 export function normalizeMealSuggestion(s: RawMealSuggestion) {
-  const description = (s.description ?? '').trim()
-  const instructions = (s.instructions ?? '').trim()
-  const ingredients = (s.ingredients ?? []).filter(Boolean)
-  const samItems = s.samItems ?? []
-  const htItems = s.htItems ?? []
+  const raw = s as RawMealSuggestion & Record<string, unknown>
+  const description = asText(raw.description)
+  const instructions = asText(raw.instructions)
+  const ingredients = asStringList(raw.ingredients)
+  const samItems = asStringList(raw.samItems)
+  const htItems = asStringList(raw.htItems)
   const sourceUrl = asHttpUrl(s.sourceUrl)
+  const name = asText(raw.name)
+  if (!name) throw new Error('Meal suggestion missing name')
 
   return {
-    name: s.name,
-    emoji: s.emoji ?? '🍽',
-    tags: s.tags ?? [],
-    isVeg: s.isVeg ?? false,
-    proteinG: s.proteinG ?? 0,
-    carbsG: s.carbsG ?? 0,
-    fatG: s.fatG ?? 0,
-    notes: (s.notes ?? '').trim(),
-    servingSize: (s.servingSize ?? '').trim(),
-    servingWeight: (s.servingWeight ?? '').trim(),
+    name,
+    emoji: asText(raw.emoji) || '🍽',
+    tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
+    isVeg: Boolean(raw.isVeg),
+    proteinG: asNumber(raw.proteinG),
+    carbsG: asNumber(raw.carbsG),
+    fatG: asNumber(raw.fatG),
+    notes: asText(raw.notes),
+    servingSize: asText(raw.servingSize),
+    servingWeight: asText(raw.servingWeight),
     description:
       description ||
-      `A healthy ${s.name} — simple prep with fresh ingredients, perfect for the family.`,
+      `A healthy ${name} — simple prep with fresh ingredients, perfect for the family.`,
     instructions:
       instructions ||
-      `Prepare ${s.name}: prep ingredients, cook the main components, and serve family-style.`,
+      `Prepare ${name}: prep ingredients, cook the main components, and serve family-style.`,
     ingredients: ingredients.length > 0 ? ingredients : [...samItems, ...htItems].filter(Boolean),
     samItems,
     htItems,

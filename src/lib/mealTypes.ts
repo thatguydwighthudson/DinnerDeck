@@ -117,18 +117,35 @@ export function groupMealsByType<T extends { mealType?: string | null }>(
     .map(mealType => ({ mealType, meals: byType.get(mealType)! }))
 }
 
-export function mealTypePromptContext(mealType: MealType): string {
+export function mealTypeSuggestPrompt(mealType: MealType, count = 3): string {
   switch (mealType) {
     case 'breakfast':
-      return 'Suggest exactly 5 NEW breakfast meals — morning foods like eggs, oatmeal, smoothies, pancakes, yogurt bowls, etc. Keep them quick and realistic for busy weekday mornings.'
+      return `Suggest exactly ${count} NEW breakfast meals — morning foods like eggs, oatmeal, smoothies, pancakes, yogurt bowls, etc. Keep them quick and realistic for busy weekday mornings.`
     case 'lunch':
-      return 'Suggest exactly 5 NEW lunch meals — midday meals like salads, wraps, grain bowls, soups, sandwiches, etc. Suitable for home or packed lunch.'
+      return `Suggest exactly ${count} NEW lunch meals — midday meals like salads, wraps, grain bowls, soups, sandwiches, etc. Suitable for home or packed lunch.`
     case 'snack':
-      return 'Suggest exactly 5 NEW snack ideas — light bites like nuts, fruit with dip, cheese and crackers, energy bites, veggie sticks with hummus, etc. Not full meals.'
+      return `Suggest exactly ${count} NEW snack ideas — light bites like nuts, fruit with dip, cheese and crackers, energy bites, veggie sticks with hummus, etc. Not full meals.`
     case 'dessert':
-      return 'Suggest exactly 5 NEW dessert ideas — treats like fruit crisps, chocolate mousse, cookies, nice cream, pudding, etc. Healthier options preferred but still satisfying.'
+      return `Suggest exactly ${count} NEW dessert ideas — treats like fruit crisps, chocolate mousse, cookies, nice cream, pudding, etc. Healthier options preferred but still satisfying.`
     case 'dinner':
     default:
-      return 'Suggest exactly 5 NEW dinner meals — healthy, realistic weeknight dinners. Nothing too exotic or time-consuming.'
+      return `Suggest exactly ${count} NEW dinner meals — healthy, realistic weeknight dinners. Nothing too exotic or time-consuming.`
   }
+}
+
+/** @deprecated Use mealTypeSuggestPrompt */
+export function mealTypePromptContext(mealType: MealType): string {
+  return mealTypeSuggestPrompt(mealType, 5)
+}
+
+export function suggestIdeasLabel(mealType: MealType): string {
+  const label = MEAL_TYPE_LABELS[mealType].toLowerCase()
+  return mealType === 'snack' ? 'Suggest snack ideas' : `Suggest ${label} ideas`
+}
+
+export const MEAL_TYPES_WITH_IDEAS_SUGGEST = ['breakfast', 'lunch', 'snack', 'dessert'] as const
+export type MealTypeWithIdeasSuggest = (typeof MEAL_TYPES_WITH_IDEAS_SUGGEST)[number]
+
+export function supportsMealTypeIdeasSuggest(mealType: MealType): mealType is MealTypeWithIdeasSuggest {
+  return (MEAL_TYPES_WITH_IDEAS_SUGGEST as readonly MealType[]).includes(mealType)
 }

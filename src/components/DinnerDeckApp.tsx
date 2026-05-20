@@ -22,6 +22,7 @@ import {
   mealTypesAvailableToAdd,
   normalizeMealType,
   saveDayMealTypesState,
+  supportsMealTypeIdeasSuggest,
   type DayMealTypesState,
   type MealType,
 } from '@/lib/mealTypes'
@@ -130,6 +131,8 @@ export default function DinnerDeckApp({ user }: DinnerDeckAppProps) {
   const [groceryChecked, setGroceryChecked] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
   const [suggesting, setSuggesting] = useState(false)
+  const [suggestingPicker, setSuggestingPicker] = useState(false)
+  const [pickerSuggestions, setPickerSuggestions] = useState<MealSuggestion[]>([])
   const [importing, setImporting] = useState(false)
   const [importUrl, setImportUrl] = useState('')
   const [detailMeal, setDetailMeal] = useState<Meal | MealSuggestion | null>(null)
@@ -140,7 +143,7 @@ export default function DinnerDeckApp({ user }: DinnerDeckAppProps) {
 
   const suggestMessage = useCyclingMessage(suggesting, MEAL_GENERATING_MESSAGES)
   const importMessage = useCyclingMessage(importing, MEAL_GENERATING_MESSAGES)
-  const activeGeneratingMessage = suggesting ? suggestMessage : importMessage
+  const activeGeneratingMessage = suggesting || suggestingPicker ? suggestMessage : importMessage
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -185,6 +188,10 @@ export default function DinnerDeckApp({ user }: DinnerDeckAppProps) {
     if (page === 'history') fetchHistory()
   }, [page, fetchHistory])
 
+  useEffect(() => {
+    setPickerSuggestions([])
+  }, [selectedMealType, selectedDay])
+
   const updateSlot = async (day: string, mealType: MealType, updates: Partial<DayPlan>) => {
     const existing = weekPlan.find(p => p.dayOfWeek === day && p.mealType === mealType)
     const payload = {
@@ -219,6 +226,34 @@ export default function DinnerDeckApp({ user }: DinnerDeckAppProps) {
       showToast('Could not save — try again')
     } finally {
       setAssigning(false)
+    }
+  }
+
+  const handleSuggestMealTypeIdeas = async () => {
+    if (!selectedMealType || !supportsMealTypeIdeasSuggest(selectedMealType)) return
+    setSuggestingPicker(true)
+    try {
+      const res = await fetch('/api/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mealType: selectedMealType,
+          mealFocus,
+        }),
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error((errBody as { error?: string }).error ?? 'suggest failed')
+      }
+      const { suggestions } = (await res.json()) as { suggestions: GroupedSuggestions }
+      const items = suggestions[selectedMealType] ?? []
+      if (!items.length) throw new Error('no suggestions')
+      setPickerSuggestions(items)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong — try again'
+      showToast(msg === 'suggest failed' || msg === 'no suggestions' ? 'Could not get ideas — try again' : msg)
+    } finally {
+      setSuggestingPicker(false)
     }
   }
 
@@ -625,6 +660,7 @@ export default function DinnerDeckApp({ user }: DinnerDeckAppProps) {
               setSelectedDay(null)
             }}
             onSelectMealType={mt => {
+              setPickerSuggestions([])
               setSelectedMealType(mt)
               setWeekNav('mealType')
             }}
@@ -641,10 +677,15 @@ export default function DinnerDeckApp({ user }: DinnerDeckAppProps) {
           <MealTypePickerScreen
             day={selectedDay}
             mealType={selectedMealType}
-            suggestions={[]}
+            suggestions={pickerSuggestions}
             libraryMeals={meals.filter(m => normalizeMealType(m.mealType) === selectedMealType)}
             assigning={assigning}
+            suggesting={suggestingPicker}
+            onSuggestIdeas={
+              supportsMealTypeIdeasSuggest(selectedMealType) ? handleSuggestMealTypeIdeas : undefined
+            }
             onBack={() => {
+              setPickerSuggestions([])
               setWeekNav('day')
               setSelectedMealType(null)
             }}
@@ -888,7 +929,7 @@ export default function DinnerDeckApp({ user }: DinnerDeckAppProps) {
 
       </main>
 
-      {(suggesting || importing) && (
+      {(suggesting || suggestingPicker || importing) && (
         <div className={styles.generatingBanner} aria-busy="true">
           <GeneratingStatus message={activeGeneratingMessage} className={styles.generatingBannerStatus} />
         </div>

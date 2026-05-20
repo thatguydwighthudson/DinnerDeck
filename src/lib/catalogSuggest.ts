@@ -3,9 +3,11 @@ import { db } from '@/lib/db'
 import { curatedRecipes, meals } from '@/db/schema'
 import type { EnrichedRecipePayload } from '@/lib/importRecipeFromUrl'
 import type { MealFocusPrefs, MealFocusPresetId } from '@/lib/mealFocus'
+import type { MealType } from '@/lib/mealTypes'
 import type { RawMealSuggestion } from '@/lib/normalizeMeal'
 
-const SUGGEST_COUNT = 5
+export const WEEK_DINNER_SUGGEST_COUNT = 5
+export const PICKER_CATALOG_SUGGEST_COUNT = 3
 const COOLDOWN_DAYS = 14
 
 function shuffle<T>(items: T[]): T[] {
@@ -52,10 +54,17 @@ function parseEnriched(value: unknown): EnrichedRecipePayload | null {
 
 export type CatalogPick = RawMealSuggestion & { catalogRecipeId: number }
 
-export async function pickCatalogDinners(
+function defaultSuggestCount(mealType: MealType): number {
+  return mealType === 'dinner' ? WEEK_DINNER_SUGGEST_COUNT : PICKER_CATALOG_SUGGEST_COUNT
+}
+
+export async function pickCatalogMeals(
+  mealType: MealType,
   mealFocus?: MealFocusPrefs,
-  userId?: string
+  userId?: string,
+  count?: number
 ): Promise<CatalogPick[]> {
+  const limit = count ?? defaultSuggestCount(mealType)
   const cooldownBefore = new Date()
   cooldownBefore.setDate(cooldownBefore.getDate() - COOLDOWN_DAYS)
 
@@ -73,7 +82,7 @@ export async function pickCatalogDinners(
 
   const conditions = [
     eq(curatedRecipes.active, true),
-    eq(curatedRecipes.mealType, 'dinner'),
+    eq(curatedRecipes.mealType, mealType),
     sql`${curatedRecipes.enriched} IS NOT NULL`,
     or(isNull(curatedRecipes.lastSuggestedAt), lt(curatedRecipes.lastSuggestedAt, cooldownBefore)),
   ]
@@ -97,7 +106,7 @@ export async function pickCatalogDinners(
     )
   })
 
-  const picked = shuffle(eligible).slice(0, SUGGEST_COUNT)
+  const picked = shuffle(eligible).slice(0, limit)
 
   const suggestions: CatalogPick[] = []
   for (const row of picked) {
@@ -125,6 +134,14 @@ export async function pickCatalogDinners(
   }
 
   return suggestions
+}
+
+/** @deprecated Use pickCatalogMeals('dinner', ...) */
+export async function pickCatalogDinners(
+  mealFocus?: MealFocusPrefs,
+  userId?: string
+): Promise<CatalogPick[]> {
+  return pickCatalogMeals('dinner', mealFocus, userId)
 }
 
 export async function markCatalogSuggested(catalogRecipeIds: number[]) {
