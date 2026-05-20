@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { meals, weekPlans } from '@/db/schema'
+import { isAuthResponse, requireUser } from '@/lib/apiAuth'
 import { normalizeMealSuggestion, type RawMealSuggestion } from '@/lib/normalizeMeal'
 import type { MealType } from '@/lib/mealTypes'
 import { MEAL_TYPES } from '@/lib/mealTypes'
@@ -17,6 +18,9 @@ type AssignBody = {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const body = (await req.json()) as AssignBody
   const { weekStart, dayOfWeek, mealType, mode, mealId, meal, saveToLibrary } = body
 
@@ -35,6 +39,14 @@ export async function POST(req: NextRequest) {
   } else if (mode === 'eat_out') {
     isEatOut = true
   } else if (mode === 'library' && mealId) {
+    const [owned] = await db
+      .select({ id: meals.id })
+      .from(meals)
+      .where(and(eq(meals.id, mealId), eq(meals.userId, auth.id)))
+      .limit(1)
+    if (!owned) {
+      return NextResponse.json({ error: 'Meal not found' }, { status: 404 })
+    }
     adultMealId = mealId
   } else if (mode === 'suggestion' && meal) {
     const normalized = normalizeMealSuggestion(meal)
@@ -43,6 +55,7 @@ export async function POST(req: NextRequest) {
         .insert(meals)
         .values({
           ...normalized,
+          userId: auth.id,
           mealType,
           alternateRecipes: normalized.alternateRecipes ?? null,
         })
@@ -58,6 +71,7 @@ export async function POST(req: NextRequest) {
   const [plan] = await db
     .insert(weekPlans)
     .values({
+      userId: auth.id,
       weekStart: weekStartDate,
       dayOfWeek,
       mealType,
@@ -70,7 +84,7 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: [weekPlans.weekStart, weekPlans.dayOfWeek, weekPlans.mealType],
+      target: [weekPlans.userId, weekPlans.weekStart, weekPlans.dayOfWeek, weekPlans.mealType],
       set: {
         isLeftover,
         isEatOut,

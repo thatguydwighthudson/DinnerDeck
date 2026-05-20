@@ -3,7 +3,7 @@
 import { DAYS, DayPlan, Meal, KidsMeal } from '@/lib/types'
 import { MEAL_TYPE_LABELS, type MealType } from '@/lib/mealTypes'
 import MealThumbnail from '@/components/MealThumbnail'
-import styles from '@/app/page.module.css'
+import styles from '@/app/dashboard/page.module.css'
 
 type Props = {
   activeMealTypes: MealType[]

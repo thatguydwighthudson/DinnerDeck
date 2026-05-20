@@ -3,6 +3,7 @@ import { and, arrayContains, asc, desc, eq, isNull } from 'drizzle-orm'
 import { normalizeMealType } from '@/lib/mealTypes'
 import { db } from '@/lib/db'
 import { meals, weekPlans } from '@/db/schema'
+import { isAuthResponse, requireUser } from '@/lib/apiAuth'
 
 const mealFields = [
   'name',
@@ -34,10 +35,13 @@ function pickMealFields(body: Record<string, unknown>) {
 }
 
 export async function GET(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const { searchParams } = new URL(req.url)
   const filter = searchParams.get('filter')
 
-  const conditions = [isNull(meals.deletedAt)]
+  const conditions = [isNull(meals.deletedAt), eq(meals.userId, auth.id)]
   if (filter === 'fav') conditions.push(eq(meals.isFavorite, true))
   if (filter === 'veg') conditions.push(eq(meals.isVeg, true))
   if (filter === 'hp') conditions.push(arrayContains(meals.tags, ['high-protein']))
@@ -59,6 +63,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const body = await req.json()
 
   const mealType = normalizeMealType(body.mealType as string | undefined)
@@ -66,6 +73,7 @@ export async function POST(req: NextRequest) {
   const [meal] = await db
     .insert(meals)
     .values({
+      userId: auth.id,
       name: body.name,
       mealType,
       emoji: body.emoji ?? '🍽',
@@ -93,6 +101,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const body = await req.json()
   const { id, ...rest } = body
 
@@ -106,7 +117,7 @@ export async function PATCH(req: NextRequest) {
   const [meal] = await db
     .update(meals)
     .set({ ...data, updatedAt: new Date() })
-    .where(and(eq(meals.id, id), isNull(meals.deletedAt)))
+    .where(and(eq(meals.id, id), eq(meals.userId, auth.id), isNull(meals.deletedAt)))
     .returning()
 
   if (!meal) return NextResponse.json({ error: 'Meal not found' }, { status: 404 })
@@ -115,6 +126,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const { searchParams } = new URL(req.url)
   const id = parseInt(searchParams.get('id') ?? '', 10)
 
@@ -123,7 +137,7 @@ export async function DELETE(req: NextRequest) {
   const [meal] = await db
     .select({ id: meals.id })
     .from(meals)
-    .where(and(eq(meals.id, id), isNull(meals.deletedAt)))
+    .where(and(eq(meals.id, id), eq(meals.userId, auth.id), isNull(meals.deletedAt)))
     .limit(1)
 
   if (!meal) return NextResponse.json({ error: 'Meal not found' }, { status: 404 })

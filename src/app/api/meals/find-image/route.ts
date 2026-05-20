@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { meals } from '@/db/schema'
 import { findMealImageUrl } from '@/lib/findMealImage'
+import { isAuthResponse, requireUser } from '@/lib/apiAuth'
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const { name, mealId } = await req.json()
 
   if (!name || typeof name !== 'string') {
@@ -18,7 +22,7 @@ export async function POST(req: NextRequest) {
       await db
         .update(meals)
         .set({ imageUrl, updatedAt: new Date() })
-        .where(eq(meals.id, mealId))
+        .where(and(eq(meals.id, mealId), eq(meals.userId, auth.id)))
     }
 
     return NextResponse.json({ imageUrl })

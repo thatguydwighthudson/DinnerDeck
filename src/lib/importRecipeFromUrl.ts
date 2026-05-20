@@ -106,8 +106,12 @@ export function buildEnrichedPayload(
   }
 }
 
-export async function importRecipeFromUrl(url: string): Promise<ImportedRecipeMeal> {
-  const prompt = `Import a recipe for a family meal library from this URL: ${url}
+export async function importRecipeFromUrl(
+  url: string,
+  householdContext?: string
+): Promise<ImportedRecipeMeal> {
+  const contextLine = householdContext ? `${householdContext}\n\n` : ''
+  const prompt = `${contextLine}Import a recipe for a family meal library from this URL: ${url}
 
 Use web_search to fetch and read the recipe page at the URL above.
 Extract the primary recipe into a "meal" object with:

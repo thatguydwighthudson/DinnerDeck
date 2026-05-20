@@ -3,13 +3,17 @@ import { and, asc, eq, isNotNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { mealHistory, weekPlans } from '@/db/schema'
 import { getWeekStart } from '@/lib/types'
+import { isAuthResponse, requireUser } from '@/lib/apiAuth'
 
 export async function GET(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const { searchParams } = new URL(req.url)
   const weekStart = searchParams.get('weekStart') ?? getWeekStart()
   const mealType = searchParams.get('mealType')
 
-  const conditions = [eq(weekPlans.weekStart, new Date(weekStart))]
+  const conditions = [eq(weekPlans.userId, auth.id), eq(weekPlans.weekStart, new Date(weekStart))]
   if (mealType) conditions.push(eq(weekPlans.mealType, mealType))
 
   const plans = await db.query.weekPlans.findMany({
@@ -25,6 +29,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const body = await req.json()
   const {
     weekStart,
@@ -41,6 +48,7 @@ export async function PUT(req: NextRequest) {
   const [plan] = await db
     .insert(weekPlans)
     .values({
+      userId: auth.id,
       weekStart: new Date(weekStart),
       dayOfWeek,
       mealType,
@@ -53,7 +61,7 @@ export async function PUT(req: NextRequest) {
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: [weekPlans.weekStart, weekPlans.dayOfWeek, weekPlans.mealType],
+      target: [weekPlans.userId, weekPlans.weekStart, weekPlans.dayOfWeek, weekPlans.mealType],
       set: {
         isLeftover,
         isEatOut,
@@ -75,6 +83,9 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const { searchParams } = new URL(req.url)
   const action = searchParams.get('action')
 
@@ -87,6 +98,7 @@ export async function POST(req: NextRequest) {
       .from(weekPlans)
       .where(
         and(
+          eq(weekPlans.userId, auth.id),
           eq(weekPlans.weekStart, new Date(weekStart)),
           eq(weekPlans.mealType, 'dinner'),
           isNotNull(weekPlans.adultMealId),
@@ -95,6 +107,7 @@ export async function POST(req: NextRequest) {
       )
 
     const historyEntries = plans.map(p => ({
+      userId: auth.id,
       mealId: p.adultMealId!,
       cookedOn: new Date(weekStart),
       weekStart: new Date(weekStart),

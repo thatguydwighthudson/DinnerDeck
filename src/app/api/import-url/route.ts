@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { importedUrls, meals } from '@/db/schema'
+import { userMealPlanContext } from '@/lib/auth-shared'
+import { isAuthResponse, requireUser } from '@/lib/apiAuth'
 import { normalizeMealType } from '@/lib/mealTypes'
 import { buildEnrichedPayload } from '@/lib/importRecipeFromUrl'
 import {
@@ -19,23 +21,28 @@ function isUnsupportedImport(err: unknown): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+  const user = auth
+
   const body = await req.json()
   const { url: rawUrl, mealType: requestedMealType } = body as { url?: string; mealType?: string }
   if (!rawUrl?.trim()) return NextResponse.json({ error: 'URL required' }, { status: 400 })
 
   const url = rawUrl.trim()
+  const householdContext = userMealPlanContext(user)
 
   const [existing] = await db
     .select()
     .from(importedUrls)
-    .where(eq(importedUrls.url, url))
+    .where(and(eq(importedUrls.url, url), eq(importedUrls.userId, user.id)))
     .limit(1)
 
   if (existing?.mealId) {
     const [meal] = await db
       .select()
       .from(meals)
-      .where(eq(meals.id, existing.mealId))
+      .where(and(eq(meals.id, existing.mealId), eq(meals.userId, user.id)))
       .limit(1)
     if (meal) return NextResponse.json({ meal, cached: true })
   }
@@ -48,6 +55,7 @@ export async function POST(req: NextRequest) {
     const [meal] = await db
       .insert(meals)
       .values({
+        userId: user.id,
         name: payload.name,
         emoji: payload.emoji,
         tags: payload.tags,
@@ -73,10 +81,19 @@ export async function POST(req: NextRequest) {
 
     await db
       .insert(importedUrls)
-      .values({ url, mealId: meal.id, rawJson: { meal: imported, source: 'json-ld' } })
+      .values({
+        url,
+        userId: user.id,
+        mealId: meal.id,
+        rawJson: { meal: imported, source: 'json-ld', householdContext },
+      })
       .onConflictDoUpdate({
         target: importedUrls.url,
-        set: { mealId: meal.id, rawJson: { meal: imported, source: 'json-ld' } },
+        set: {
+          userId: user.id,
+          mealId: meal.id,
+          rawJson: { meal: imported, source: 'json-ld', householdContext },
+        },
       })
 
     return NextResponse.json({ meal })

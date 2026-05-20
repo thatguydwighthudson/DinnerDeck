@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pickCatalogDinners } from '@/lib/catalogSuggest'
 import { normalizeMealSuggestion } from '@/lib/normalizeMeal'
 import type { MealFocusPrefs } from '@/lib/mealFocus'
+import { isAuthResponse, requireUser } from '@/lib/apiAuth'
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+
   const body = await req.json()
   const { mealFocus } = body as { mealFocus?: MealFocusPrefs }
 
   try {
-    const picks = await pickCatalogDinners(mealFocus)
+    const picks = await pickCatalogDinners(mealFocus, auth.id)
 
     if (picks.length < 5) {
       return NextResponse.json(

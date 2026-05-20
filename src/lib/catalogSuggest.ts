@@ -52,14 +52,20 @@ function parseEnriched(value: unknown): EnrichedRecipePayload | null {
 
 export type CatalogPick = RawMealSuggestion & { catalogRecipeId: number }
 
-export async function pickCatalogDinners(mealFocus?: MealFocusPrefs): Promise<CatalogPick[]> {
+export async function pickCatalogDinners(
+  mealFocus?: MealFocusPrefs,
+  userId?: string
+): Promise<CatalogPick[]> {
   const cooldownBefore = new Date()
   cooldownBefore.setDate(cooldownBefore.getDate() - COOLDOWN_DAYS)
+
+  const libraryConditions = [isNotNull(meals.catalogRecipeId), isNull(meals.deletedAt)]
+  if (userId) libraryConditions.push(eq(meals.userId, userId))
 
   const inLibrary = await db
     .select({ catalogRecipeId: meals.catalogRecipeId })
     .from(meals)
-    .where(and(isNotNull(meals.catalogRecipeId), isNull(meals.deletedAt)))
+    .where(and(...libraryConditions))
 
   const excludeIds = [
     ...new Set(inLibrary.map(r => r.catalogRecipeId).filter((id): id is number => id != null)),

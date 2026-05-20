@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { meals, weekPlans } from '@/db/schema'
+import { isAuthResponse, requireUser } from '@/lib/apiAuth'
 import { DAYS } from '@/lib/types'
 import { MEAL_TYPES, type MealType } from '@/lib/mealTypes'
 import { markCatalogSuggested } from '@/lib/catalogSuggest'
@@ -22,6 +23,7 @@ function orderDinnerMeals<T extends { isVeg?: boolean }>(items: T[]): T[] {
 }
 
 async function upsertWeekSlot(
+  userId: string,
   weekStart: Date,
   dayOfWeek: string,
   mealType: MealType,
@@ -30,6 +32,7 @@ async function upsertWeekSlot(
   await db
     .insert(weekPlans)
     .values({
+      userId,
       weekStart,
       dayOfWeek,
       mealType,
@@ -42,7 +45,7 @@ async function upsertWeekSlot(
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: [weekPlans.weekStart, weekPlans.dayOfWeek, weekPlans.mealType],
+      target: [weekPlans.userId, weekPlans.weekStart, weekPlans.dayOfWeek, weekPlans.mealType],
       set: {
         isLeftover: data.isLeftover,
         isEatOut: false,
@@ -55,6 +58,10 @@ async function upsertWeekSlot(
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser()
+  if (isAuthResponse(auth)) return auth
+  const userId = auth.id
+
   const body = await req.json()
   const { weekStart, selections = [] } = body as {
     weekStart: string
@@ -92,6 +99,7 @@ export async function POST(req: NextRequest) {
         .values(
           toInsert.map(({ catalogRecipeId, ...row }) => ({
             ...row,
+            userId,
             mealType,
             catalogRecipeId: catalogRecipeId ?? null,
           }))
@@ -114,13 +122,13 @@ export async function POST(req: NextRequest) {
 
         for (const a of assignments) {
           if (a.leftover) {
-            await upsertWeekSlot(weekStartDate, a.day, mealType, {
+            await upsertWeekSlot(userId, weekStartDate, a.day, mealType, {
               isLeftover: true,
               servings: 4,
               adultMealId: null,
             })
           } else {
-            await upsertWeekSlot(weekStartDate, a.day, mealType, {
+            await upsertWeekSlot(userId, weekStartDate, a.day, mealType, {
               isLeftover: false,
               servings: 4,
               adultMealId: a.mealId,
@@ -131,7 +139,7 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < DAYS.length; i++) {
           const day = DAYS[i]
           const mealId = mealIds[i % mealIds.length] ?? null
-          await upsertWeekSlot(weekStartDate, day, mealType, {
+          await upsertWeekSlot(userId, weekStartDate, day, mealType, {
             isLeftover: false,
             servings: 4,
             adultMealId: mealId,
