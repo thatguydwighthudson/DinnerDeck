@@ -1,5 +1,4 @@
 import type { DayPlan, Meal, PlannedMeal } from '@/lib/types'
-import type { MealType } from '@/lib/mealTypes'
 import { resolveSlotMeal } from '@/lib/slotDisplay'
 
 export type MacroTotals = {
@@ -38,31 +37,22 @@ export function addMacroTotals(a: MacroTotals, b: MacroTotals): MacroTotals {
 
 const emptyTotals: MacroTotals = { proteinG: 0, carbsG: 0, fatG: 0, calories: 0, mealCount: 0 }
 
-export function sumDayMacros(
-  day: string,
-  activeMealTypes: MealType[],
-  weekPlan: DayPlan[],
-  meals: Meal[]
-): MacroTotals {
-  return activeMealTypes.reduce((acc, mealType) => {
-    const plan = weekPlan.find(p => p.dayOfWeek === day && p.mealType === mealType)
-    if (!plan) return acc
+export function sumDayMacros(day: string, weekPlan: DayPlan[], meals: Meal[]): MacroTotals {
+  return weekPlan
+    .filter(p => p.dayOfWeek === day)
+    .reduce((acc, plan) => {
+      const slotMeal = resolveSlotMeal(plan, meals)
+      if (!slotMeal) return acc
+      return addMacroTotals(acc, macrosFromMeal(slotMeal))
+    }, emptyTotals)
+}
+
+export function sumWeekMacros(weekPlan: DayPlan[], meals: Meal[]): MacroTotals {
+  return weekPlan.reduce((acc, plan) => {
     const slotMeal = resolveSlotMeal(plan, meals)
     if (!slotMeal) return acc
     return addMacroTotals(acc, macrosFromMeal(slotMeal))
   }, emptyTotals)
-}
-
-export function sumWeekMacros(
-  activeMealTypes: MealType[],
-  weekPlan: DayPlan[],
-  meals: Meal[]
-): MacroTotals {
-  const days = new Set(weekPlan.map(p => p.dayOfWeek))
-  return [...days].reduce(
-    (acc, day) => addMacroTotals(acc, sumDayMacros(day, activeMealTypes, weekPlan, meals)),
-    emptyTotals
-  )
 }
 
 export function formatMacroLine(totals: MacroTotals): string {

@@ -5,7 +5,8 @@ export const WEB_SEARCH_TOOLS = [
   { type: 'web_search_20250305', name: 'web_search' },
 ] as unknown as Anthropic.Messages.MessageCreateParams['tools']
 
-export const CLAUDE_MODEL = 'claude-sonnet-4-20250514'
+/** Fast model for meal suggestions and lighter tasks. */
+export const CLAUDE_MODEL = 'claude-haiku-4-20250514'
 
 export function extractTextFromMessage(message: Anthropic.Message): string {
   return message.content
@@ -25,4 +26,8 @@ export function parseJsonFromText<T>(raw: string): T {
     if (arrayMatch) return JSON.parse(arrayMatch[0]) as T
     throw new Error('No JSON found in model response')
   }
+}
+
+export function truncateMealNames(names: string[], limit = 10): string[] {
+  return names.filter(Boolean).slice(-limit)
 }

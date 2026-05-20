@@ -1,7 +1,7 @@
 'use client'
 
 import { DAYS, DAY_LABELS, DayPlan, Meal, type DayOfWeek } from '@/lib/types'
-import { MEAL_TYPE_LABELS, type MealType } from '@/lib/mealTypes'
+import { MEAL_TYPES, MEAL_TYPE_LABELS, type MealType } from '@/lib/mealTypes'
 import { slotEmoji, slotIsFilled, slotTitle } from '@/lib/slotDisplay'
 import { formatMacroLine, sumWeekMacros } from '@/lib/macros'
 import MealThumbnail from '@/components/MealThumbnail'
@@ -10,7 +10,6 @@ import styles from './WeekOverview.module.css'
 type Props = {
   weekPlan: DayPlan[]
   meals: Meal[]
-  activeMealTypes: MealType[]
   onSelectDay: (day: DayOfWeek) => void
   onGoGrocery?: () => void
   groceryMealCount?: number
@@ -19,7 +18,6 @@ type Props = {
 export default function WeekOverview({
   weekPlan,
   meals,
-  activeMealTypes,
   onSelectDay,
   onGoGrocery,
   groceryMealCount = 0,
@@ -27,15 +25,15 @@ export default function WeekOverview({
   const getSlot = (day: string, mealType: MealType) =>
     weekPlan.find(p => p.dayOfWeek === day && p.mealType === mealType)
 
-  const weekMacros = sumWeekMacros(activeMealTypes, weekPlan, meals)
+  const weekMacros = sumWeekMacros(weekPlan, meals)
 
   return (
     <div className={styles.wrap}>
-      <p className={styles.hint}>Tap a day to plan breakfast, lunch, dinner, and more.</p>
+      <p className={styles.hint}>Tap a day to plan dinner — add breakfast, lunch, and more from that day if you want.</p>
       {DAYS.map(day => {
-        const filled = activeMealTypes
-          .map(mt => ({ mealType: mt, plan: getSlot(day, mt) }))
-          .filter((s): s is { mealType: MealType; plan: DayPlan } => Boolean(s.plan && slotIsFilled(s.plan)))
+        const filled = MEAL_TYPES.map(mt => ({ mealType: mt, plan: getSlot(day, mt) })).filter(
+          (s): s is { mealType: MealType; plan: DayPlan } => Boolean(s.plan && slotIsFilled(s.plan))
+        )
 
         return (
           <button key={day} type="button" className={styles.dayCard} onClick={() => onSelectDay(day)}>

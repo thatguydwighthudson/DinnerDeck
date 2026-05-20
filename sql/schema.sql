@@ -75,3 +75,27 @@ CREATE TABLE IF NOT EXISTS "ImportedUrl" (
   "rawJson" JSONB,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS "CuratedRecipe" (
+  "id" SERIAL PRIMARY KEY,
+  "name" TEXT NOT NULL,
+  "source_url" TEXT NOT NULL,
+  "meal_type" TEXT NOT NULL DEFAULT 'dinner',
+  "tags" TEXT[] NOT NULL DEFAULT '{}',
+  "isVeg" BOOLEAN NOT NULL DEFAULT FALSE,
+  "emoji" TEXT NOT NULL DEFAULT '🍽',
+  "enriched" JSONB,
+  "active" BOOLEAN NOT NULL DEFAULT TRUE,
+  "sort_order" INTEGER,
+  "curator_notes" TEXT NOT NULL DEFAULT '',
+  "last_suggested_at" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "CuratedRecipe_meal_type_check"
+    CHECK ("meal_type" IN ('breakfast', 'lunch', 'snack', 'dinner', 'dessert'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "CuratedRecipe_source_url_key"
+  ON "CuratedRecipe" ("source_url");
+
+-- catalog_recipe_id on Meal: see sql/migrate-curated-recipes.sql

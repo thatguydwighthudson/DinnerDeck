@@ -9,24 +9,28 @@ import styles from './DayPlanScreen.module.css'
 
 type Props = {
   day: DayOfWeek
-  activeMealTypes: MealType[]
+  mealTypesForDay: MealType[]
+  addableMealTypes: MealType[]
   weekPlan: DayPlan[]
   meals: Meal[]
   kidsMeals: KidsMeal[]
   onBack: () => void
   onSelectMealType: (mealType: MealType) => void
+  onAddMealType: (mealType: MealType) => void
   onViewSlotMeal: (mealType: MealType, meal: Meal | PlannedMeal) => void
   onKidsPicker: () => void
 }
 
 export default function DayPlanScreen({
   day,
-  activeMealTypes,
+  mealTypesForDay,
+  addableMealTypes,
   weekPlan,
   meals,
   kidsMeals,
   onBack,
   onSelectMealType,
+  onAddMealType,
   onViewSlotMeal,
   onKidsPicker,
 }: Props) {
@@ -35,7 +39,7 @@ export default function DayPlanScreen({
 
   const dinnerPlan = getSlot('dinner')
   const kids = dinnerPlan?.kidsMealId ? kidsMeals.find(k => k.id === dinnerPlan.kidsMealId) : null
-  const dayMacros = sumDayMacros(day, activeMealTypes, weekPlan, meals)
+  const dayMacros = sumDayMacros(day, weekPlan, meals)
 
   return (
     <div className={styles.wrap}>
@@ -43,10 +47,10 @@ export default function DayPlanScreen({
         ← Week
       </button>
       <h2 className={styles.title}>{DAY_LABELS[day]}</h2>
-      <p className={styles.sub}>Choose a meal type to plan</p>
+      <p className={styles.sub}>Dinner is always here — add other meals for this day if you want</p>
 
       <div className={styles.grid}>
-        {activeMealTypes.map(mealType => {
+        {mealTypesForDay.map(mealType => {
           const plan = getSlot(mealType)
           const filled = plan && slotIsFilled(plan)
           const title = plan ? slotTitle(plan, meals) : null
@@ -95,6 +99,24 @@ export default function DayPlanScreen({
         })}
       </div>
 
+      {addableMealTypes.length > 0 && (
+        <div className={styles.addBlock}>
+          <span className={styles.addLabel}>Add a meal for {DAY_LABELS[day]}</span>
+          <div className={styles.addRow}>
+            {addableMealTypes.map(mealType => (
+              <button
+                key={mealType}
+                type="button"
+                className={styles.addBtn}
+                onClick={() => onAddMealType(mealType)}
+              >
+                + {MEAL_TYPE_LABELS[mealType]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={styles.macroBlock} aria-live="polite">
         <span className={styles.macroLabel}>Day macros</span>
         <p className={styles.macroLine}>{formatMacroLine(dayMacros)}</p>
@@ -105,14 +127,12 @@ export default function DayPlanScreen({
         )}
       </div>
 
-      {activeMealTypes.includes('dinner') && (
-        <div className={styles.kidsBlock}>
-          <span className={styles.kidsLabel}>Kids dinner</span>
-          <button type="button" className={styles.kidsBtn} onClick={onKidsPicker}>
-            {kids ? `${kids.emoji} ${kids.name}` : 'Same as adults…'}
-          </button>
-        </div>
-      )}
+      <div className={styles.kidsBlock}>
+        <span className={styles.kidsLabel}>Kids dinner</span>
+        <button type="button" className={styles.kidsBtn} onClick={onKidsPicker}>
+          {kids ? `${kids.emoji} ${kids.name}` : 'Same as adults…'}
+        </button>
+      </div>
     </div>
   )
 }

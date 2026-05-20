@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { AlternateRecipe, Meal, MealSuggestion, PlannedMeal } from '@/lib/types'
+import { Meal, MealSuggestion, PlannedMeal } from '@/lib/types'
 import MealThumbnail from '@/components/MealThumbnail'
 import styles from './MealDetailModal.module.css'
 
@@ -14,8 +13,6 @@ type Props = {
   onDelete?: () => void
   onUpdate?: () => void
   updateLabel?: string
-  onSelectAlternative?: (alt: AlternateRecipe) => void
-  selectedAlternateUrl?: string | null
 }
 
 export default function MealDetailModal({
@@ -25,18 +22,11 @@ export default function MealDetailModal({
   onDelete,
   onUpdate,
   updateLabel = 'Update day',
-  onSelectAlternative,
-  selectedAlternateUrl,
 }: Props) {
-  const [showAlternatives, setShowAlternatives] = useState(false)
   const aiGenerated = 'aiGenerated' in meal && meal.aiGenerated
   const ingredients = meal.ingredients ?? []
   const hasIngredients = ingredients.length > 0
   const hasGrocery = meal.samItems.length > 0 || meal.htItems.length > 0
-  const alternates = (meal.alternateRecipes ?? []).filter(
-    (a): a is AlternateRecipe => Boolean(a?.url)
-  )
-  const canPickAlternates = Boolean(onSelectAlternative && alternates.length > 0)
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -166,53 +156,6 @@ export default function MealDetailModal({
               <p className={styles.muted}>No recipe link saved for this meal.</p>
             )}
           </section>
-
-          {canPickAlternates && (
-            <section className={styles.section}>
-              <button
-                type="button"
-                className={styles.altToggleBtn}
-                onClick={() => setShowAlternatives(v => !v)}
-              >
-                {showAlternatives ? 'Hide alternatives' : 'Find alternatives'}
-              </button>
-              {showAlternatives && (
-                <div className={styles.altRow}>
-                  {alternates.map(alt => (
-                    <button
-                      key={alt.url}
-                      type="button"
-                      className={`${styles.altCard} ${selectedAlternateUrl === alt.url ? styles.altCardOn : ''}`}
-                      onClick={() => onSelectAlternative!(alt)}
-                    >
-                      <MealThumbnail emoji={meal.emoji} size="md" className={styles.altThumb} />
-                      <span className={styles.altSite}>{alt.siteName}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {!canPickAlternates && alternates.length > 0 && (
-            <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Other versions</h3>
-              <div className={styles.altRow}>
-                {alternates.map(alt => (
-                  <a
-                    key={alt.url}
-                    className={styles.altCard}
-                    href={alt.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <MealThumbnail emoji={meal.emoji} size="md" className={styles.altThumb} />
-                    <span className={styles.altSite}>{alt.siteName}</span>
-                  </a>
-                ))}
-              </div>
-            </section>
-          )}
 
           {(onUpdate || onEdit || onDelete) && (
             <div className={styles.actions}>

@@ -42,7 +42,6 @@ function toSuggestion(m: Meal): MealSuggestion {
     htItems: m.htItems,
     imageUrl: m.imageUrl,
     sourceUrl: m.sourceUrl,
-    alternateRecipes: m.alternateRecipes,
   }
 }
 

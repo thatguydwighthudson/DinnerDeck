@@ -1,3 +1,6 @@
+import { DAYS, type DayOfWeek } from '@/lib/types'
+import type { DayPlan } from '@/lib/types'
+
 export const MEAL_TYPES = ['breakfast', 'lunch', 'snack', 'dinner', 'dessert'] as const
 export type MealType = (typeof MEAL_TYPES)[number]
 
@@ -9,27 +12,88 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
   dessert: 'Dessert',
 }
 
-export const DEFAULT_ACTIVE_MEAL_TYPES: MealType[] = ['dinner']
+export const DEFAULT_DAY_MEAL_TYPES: MealType[] = ['dinner']
 
-const STORAGE_KEY = 'dinnerdeck-active-meal-types'
+const DAY_MEAL_TYPES_KEY = 'dinnerdeck-day-meal-types'
+const LEGACY_ACTIVE_KEY = 'dinnerdeck-active-meal-types'
 
-export function loadActiveMealTypes(): MealType[] {
-  if (typeof window === 'undefined') return [...DEFAULT_ACTIVE_MEAL_TYPES]
+export type DayMealTypesState = Partial<Record<DayOfWeek, MealType[]>>
+
+function sortMealTypes(types: MealType[]): MealType[] {
+  return MEAL_TYPES.filter(t => types.includes(t))
+}
+
+function ensureDinner(types: MealType[]): MealType[] {
+  const set = new Set(types)
+  set.add('dinner')
+  return sortMealTypes([...set])
+}
+
+function migrateLegacyActiveTypes(): DayMealTypesState | null {
+  if (typeof window === 'undefined') return null
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return [...DEFAULT_ACTIVE_MEAL_TYPES]
+    const raw = localStorage.getItem(LEGACY_ACTIVE_KEY)
+    if (!raw) return null
     const parsed = JSON.parse(raw) as string[]
     const valid = parsed.filter((t): t is MealType => MEAL_TYPES.includes(t as MealType))
-    if (!valid.includes('dinner')) valid.unshift('dinner')
-    return valid.length ? valid : [...DEFAULT_ACTIVE_MEAL_TYPES]
+    if (!valid.length || (valid.length === 1 && valid[0] === 'dinner')) return null
+    const perDay = ensureDinner(valid)
+    const state: DayMealTypesState = {}
+    for (const day of DAYS) state[day] = perDay
+    localStorage.removeItem(LEGACY_ACTIVE_KEY)
+    return state
   } catch {
-    return [...DEFAULT_ACTIVE_MEAL_TYPES]
+    return null
   }
 }
 
-export function saveActiveMealTypes(types: MealType[]) {
-  const withDinner = types.includes('dinner') ? types : (['dinner', ...types] as MealType[])
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(withDinner))
+export function loadDayMealTypesState(): DayMealTypesState {
+  if (typeof window === 'undefined') return {}
+  const migrated = migrateLegacyActiveTypes()
+  if (migrated) {
+    saveDayMealTypesState(migrated)
+    return migrated
+  }
+  try {
+    const raw = localStorage.getItem(DAY_MEAL_TYPES_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as DayMealTypesState
+  } catch {
+    return {}
+  }
+}
+
+export function saveDayMealTypesState(state: DayMealTypesState) {
+  localStorage.setItem(DAY_MEAL_TYPES_KEY, JSON.stringify(state))
+}
+
+/** Meal types shown when planning a day (dinner always; extras are per-day). */
+export function getMealTypesForDay(
+  day: DayOfWeek,
+  state: DayMealTypesState,
+  weekPlan: DayPlan[] = []
+): MealType[] {
+  const fromState = ensureDinner(state[day] ?? DEFAULT_DAY_MEAL_TYPES)
+  const fromPlan = weekPlan
+    .filter(p => p.dayOfWeek === day)
+    .map(p => normalizeMealType(p.mealType))
+  return ensureDinner([...fromState, ...fromPlan])
+}
+
+export function addMealTypeToDay(
+  day: DayOfWeek,
+  mealType: MealType,
+  state: DayMealTypesState
+): DayMealTypesState {
+  if (mealType === 'dinner') return state
+  const current = getMealTypesForDay(day, state)
+  if (current.includes(mealType)) return state
+  return { ...state, [day]: sortMealTypes([...current, mealType]) }
+}
+
+export function mealTypesAvailableToAdd(day: DayOfWeek, state: DayMealTypesState, weekPlan: DayPlan[]): MealType[] {
+  const current = new Set(getMealTypesForDay(day, state, weekPlan))
+  return MEAL_TYPES.filter(t => t !== 'dinner' && !current.has(t))
 }
 
 export function normalizeMealType(value: string | null | undefined): MealType {

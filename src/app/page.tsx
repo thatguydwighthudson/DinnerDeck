@@ -10,16 +10,19 @@ import {
   MealSuggestion,
   PlannedMeal,
   getWeekStart,
-  type AlternateRecipe,
   type DayOfWeek,
 } from '@/lib/types'
 import {
   MEAL_TYPES,
   MEAL_TYPE_LABELS,
+  addMealTypeToDay,
+  getMealTypesForDay,
   groupMealsByType,
-  loadActiveMealTypes,
+  loadDayMealTypesState,
+  mealTypesAvailableToAdd,
   normalizeMealType,
-  saveActiveMealTypes,
+  saveDayMealTypesState,
+  type DayMealTypesState,
   type MealType,
 } from '@/lib/mealTypes'
 import {
@@ -62,6 +65,22 @@ const emptyMealForm = (mealType: MealType = 'dinner') => ({
   htItems: '',
 })
 
+function mealMatchesSearch(m: Meal, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  const haystack = [
+    m.name,
+    MEAL_TYPE_LABELS[normalizeMealType(m.mealType)],
+    ...m.tags,
+    m.description,
+    m.notes ?? '',
+    ...m.ingredients,
+  ]
+    .join(' ')
+    .toLowerCase()
+  return q.split(/\s+/).filter(Boolean).every(term => haystack.includes(term))
+}
+
 const mealToForm = (m: Meal) => ({
   mealType: normalizeMealType(m.mealType),
   name: m.name,
@@ -98,9 +117,11 @@ export default function Home() {
   const [assigning, setAssigning] = useState(false)
   const [sheetType, setSheetType] = useState<SheetType>(null)
   const [sheetDay, setSheetDay] = useState<DayOfWeek | null>(null)
-  const [activeMealTypes, setActiveMealTypes] = useState<MealType[]>(() => loadActiveMealTypes())
+  const [dayMealTypes, setDayMealTypes] = useState<DayMealTypesState>(() => loadDayMealTypesState())
   const [mealFocus, setMealFocus] = useState<MealFocusPrefs>(() => loadMealFocus())
   const [mealFilter, setMealFilter] = useState('all')
+  const [mealSearch, setMealSearch] = useState('')
+  const [expandedMealTypes, setExpandedMealTypes] = useState<Set<MealType>>(() => new Set())
   const [groceryChecked, setGroceryChecked] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
   const [suggesting, setSuggesting] = useState(false)
@@ -109,7 +130,6 @@ export default function Home() {
   const [detailMeal, setDetailMeal] = useState<Meal | MealSuggestion | null>(null)
   const [detailPick, setDetailPick] = useState<PickableMeal | null>(null)
   const [detailSlot, setDetailSlot] = useState<{ day: DayOfWeek; mealType: MealType } | null>(null)
-  const [selectedAlternateUrl, setSelectedAlternateUrl] = useState<string | null>(null)
   const [editingMealId, setEditingMealId] = useState<number | null>(null)
   const [addForm, setAddForm] = useState(emptyMealForm)
 
@@ -204,9 +224,8 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          existingMealNames: meals.map(m => m.name),
-          favoriteMealNames: meals.filter(m => m.isFavorite).map(m => m.name),
-          activeMealTypes,
+          existingMealNames: meals.map(m => m.name).slice(-10),
+          favoriteMealNames: meals.filter(m => m.isFavorite).map(m => m.name).slice(-10),
           mealFocus,
         }),
       })
@@ -216,9 +235,10 @@ export default function Home() {
       }
       const { suggestions } = (await res.json()) as { suggestions: GroupedSuggestions }
 
-      const selections = activeMealTypes
-        .filter(t => (suggestions[t]?.length ?? 0) > 0)
-        .map(mealType => ({ mealType, meals: suggestions[mealType]! }))
+      const selections =
+        (suggestions.dinner?.length ?? 0) > 0
+          ? [{ mealType: 'dinner' as const, meals: suggestions.dinner! }]
+          : []
 
       if (!selections.length) throw new Error('no suggestions')
 
@@ -248,7 +268,6 @@ export default function Home() {
   const openPlanMealDetail = (pick: PickableMeal, slot?: { day: DayOfWeek; mealType: MealType }) => {
     setDetailPick(pick)
     setDetailSlot(slot ?? null)
-    setSelectedAlternateUrl(pick.meal.sourceUrl ?? null)
     setDetailMeal(mealFromPick(pick))
   }
 
@@ -264,23 +283,6 @@ export default function Home() {
         }
       : { key: `slot-${selectedDay}-${mealType}`, source: 'suggestion', meal }
     openPlanMealDetail(pick, { day: selectedDay, mealType })
-  }
-
-  const applyAlternateToMeal = (meal: Meal | MealSuggestion, alt: AlternateRecipe) => {
-    const baseName = meal.name.replace(/\s*\([^)]+\)$/, '').trim()
-    return {
-      ...meal,
-      name: `${baseName} (${alt.siteName})`,
-      sourceUrl: alt.url,
-    }
-  }
-
-  const handleDetailAlternate = (alt: AlternateRecipe) => {
-    if (!detailMeal) return
-    setSelectedAlternateUrl(alt.url)
-    const updated = applyAlternateToMeal(detailMeal, alt)
-    setDetailMeal(updated)
-    if (detailPick) setDetailPick({ ...detailPick, meal: updated })
   }
 
   const handleDetailUpdate = () => {
@@ -326,14 +328,14 @@ export default function Home() {
     void assignPickToSlot(pick, selectedDay, selectedMealType)
   }
 
-  const toggleMealTypeSetting = (type: MealType) => {
-    if (type === 'dinner') return
-    setActiveMealTypes(prev => {
-      const next = prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-      const sorted = MEAL_TYPES.filter(t => next.includes(t))
-      saveActiveMealTypes(sorted)
-      return sorted
+  const handleAddMealTypeToDay = (day: DayOfWeek, mealType: MealType) => {
+    setDayMealTypes(prev => {
+      const next = addMealTypeToDay(day, mealType, prev)
+      saveDayMealTypesState(next)
+      return next
     })
+    setSelectedMealType(mealType)
+    setWeekNav('mealType')
   }
 
   const toggleMealFocusPreset = (id: MealFocusPresetId) => {
@@ -420,7 +422,6 @@ export default function Home() {
     setDetailMeal(null)
     setDetailPick(null)
     setDetailSlot(null)
-    setSelectedAlternateUrl(null)
   }
 
   const openEditMeal = (meal: Meal) => {
@@ -514,15 +515,27 @@ export default function Home() {
     weekPlan.filter(p => p.adultMealId === mealId).map(p => `${p.dayOfWeek} (${MEAL_TYPE_LABELS[p.mealType as MealType] ?? p.mealType})`)
 
   const filteredMeals = meals.filter(m => {
-    if (mealFilter === 'fav') return m.isFavorite
-    if (mealFilter === 'veg') return m.isVeg
-    if (mealFilter === 'hp') return m.tags.includes('high-protein')
-    if (mealFilter === 'lc') return m.tags.includes('low-carb')
-    if (mealFilter === 'ai') return m.aiGenerated
-    return true
+    if (mealFilter === 'fav' && !m.isFavorite) return false
+    if (mealFilter === 'veg' && !m.isVeg) return false
+    if (mealFilter === 'hp' && !m.tags.includes('high-protein')) return false
+    if (mealFilter === 'lc' && !m.tags.includes('low-carb')) return false
+    if (mealFilter === 'ai' && !m.aiGenerated) return false
+    return mealMatchesSearch(m, mealSearch)
   })
 
   const mealsByType = groupMealsByType(filteredMeals)
+  const mealSearchActive = mealSearch.trim().length > 0
+  const isMealTypeExpanded = (mealType: MealType) =>
+    mealSearchActive || expandedMealTypes.has(mealType)
+
+  const toggleMealTypeSection = (mealType: MealType) => {
+    setExpandedMealTypes(prev => {
+      const next = new Set(prev)
+      if (next.has(mealType)) next.delete(mealType)
+      else next.add(mealType)
+      return next
+    })
+  }
 
   const groceryMealIds = new Set(
     dinnerPlans.filter(p => !p.isLeftover && p.adultMealId).map(p => p.adultMealId!)
@@ -577,7 +590,6 @@ export default function Home() {
             <WeekOverview
               weekPlan={weekPlan}
               meals={meals}
-              activeMealTypes={activeMealTypes}
               onSelectDay={day => {
                 setSelectedDay(day)
                 setWeekNav('day')
@@ -591,7 +603,8 @@ export default function Home() {
         {page === 'week' && weekNav === 'day' && selectedDay && (
           <DayPlanScreen
             day={selectedDay}
-            activeMealTypes={activeMealTypes}
+            mealTypesForDay={getMealTypesForDay(selectedDay, dayMealTypes, weekPlan)}
+            addableMealTypes={mealTypesAvailableToAdd(selectedDay, dayMealTypes, weekPlan)}
             weekPlan={weekPlan}
             meals={meals}
             kidsMeals={kidsMeals}
@@ -603,6 +616,7 @@ export default function Home() {
               setSelectedMealType(mt)
               setWeekNav('mealType')
             }}
+            onAddMealType={mt => handleAddMealTypeToDay(selectedDay, mt)}
             onViewSlotMeal={openDaySlotDetail}
             onKidsPicker={() => {
               setSheetDay(selectedDay)
@@ -644,6 +658,34 @@ export default function Home() {
               </button>
             </div>
 
+            <div className={styles.mealSearchRow}>
+              <input
+                type="search"
+                value={mealSearch}
+                onChange={e => setMealSearch(e.target.value)}
+                placeholder="Search meals by name, tags, ingredients…"
+                aria-label="Search meals"
+                className={styles.mealSearchInput}
+              />
+              {mealSearchActive && (
+                <button
+                  type="button"
+                  className={styles.mealSearchClear}
+                  onClick={() => setMealSearch('')}
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {filteredMeals.length > 0 && (
+              <p className={styles.mealLibrarySummary}>
+                {mealSearchActive || mealFilter !== 'all'
+                  ? `${filteredMeals.length} meal${filteredMeals.length === 1 ? '' : 's'} match`
+                  : `${filteredMeals.length} meal${filteredMeals.length === 1 ? '' : 's'} · tap a category to browse`}
+              </p>
+            )}
+
             <div className={styles.filterRow}>
               {[['all','All'],['fav','⭐ Favs'],['hp','High protein'],['veg','Vegetarian'],['lc','Low carb'],['ai','AI picks']].map(([f,l]) => (
                 <button key={f} className={`${styles.chip} ${mealFilter === f ? styles.chipOn : ''}`} onClick={() => setMealFilter(f)}>{l}</button>
@@ -652,16 +694,36 @@ export default function Home() {
 
             <button className={styles.fabSecondary} onClick={() => { setEditingMealId(null); setAddForm(emptyMealForm()); setSheetType('addMeal') }}>+ Add meal manually</button>
 
-            <div style={{ marginTop: 10 }}>
+            <div className={styles.mealLibraryList}>
               {mealsByType.length === 0 ? (
-                <p style={{ color: 'var(--muted)', fontSize: 14 }}>No meals match this filter.</p>
-              ) : mealsByType.map(({ mealType, meals: groupMeals }) => (
+                <p className={styles.mealLibraryEmpty}>
+                  {mealSearchActive
+                    ? `No meals match “${mealSearch.trim()}”.`
+                    : 'No meals match this filter.'}
+                </p>
+              ) : mealsByType.map(({ mealType, meals: groupMeals }) => {
+                const expanded = isMealTypeExpanded(mealType)
+                return (
                 <section key={mealType} className={styles.mealTypeSection}>
-                  <h3 className={styles.mealTypeSectionTitle}>
-                    {MEAL_TYPE_LABELS[mealType]}
+                  <button
+                    type="button"
+                    className={`${styles.mealTypeSectionTitle} ${expanded ? styles.mealTypeSectionTitleOpen : ''}`}
+                    onClick={() => toggleMealTypeSection(mealType)}
+                    aria-expanded={expanded}
+                  >
+                    <span className={styles.mealTypeSectionChevron} aria-hidden>
+                      {expanded ? '▼' : '▶'}
+                    </span>
+                    <span className={styles.mealTypeSectionLabel}>{MEAL_TYPE_LABELS[mealType]}</span>
                     <span className={styles.mealTypeSectionCount}>{groupMeals.length}</span>
-                  </h3>
-                  {groupMeals.map(m => (
+                  </button>
+                  {!expanded && (
+                    <p className={styles.mealTypeSectionPreview}>
+                      {groupMeals.slice(0, 3).map(m => m.name).join(' · ')}
+                      {groupMeals.length > 3 ? ` · +${groupMeals.length - 3} more` : ''}
+                    </p>
+                  )}
+                  {expanded && groupMeals.map(m => (
                 <div key={m.id} className={`${styles.mealItem} ${usedMealIds.has(m.id) ? styles.mealInUse : ''}`}>
                   <MealThumbnail emoji={m.emoji} size="lg" className={styles.mealEmoji} />
                   <div className={styles.mealInfo} onClick={() => setDetailMeal(m)} role="button" tabIndex={0}>
@@ -679,7 +741,7 @@ export default function Home() {
                 </div>
                   ))}
                 </section>
-              ))}
+              )})}
             </div>
           </div>
         )}
@@ -775,32 +837,6 @@ export default function Home() {
         {/* ===== SETTINGS ===== */}
         {page === 'settings' && (
           <div>
-            <section className={styles.settingsSection}>
-              <h2 className={styles.settingsTitle}>Meal types</h2>
-              <p className={styles.settingsDesc}>
-                Choose which meal types appear on your week planner. Dinner is always included.
-              </p>
-              {MEAL_TYPES.map(type => {
-                const on = activeMealTypes.includes(type)
-                const locked = type === 'dinner'
-                return (
-                  <div key={type} className={styles.mealTypeRow}>
-                    <span>{MEAL_TYPE_LABELS[type]}</span>
-                    <button
-                      type="button"
-                      className={`${styles.mealTypeToggle} ${on ? styles.mealTypeToggleOn : ''}`}
-                      disabled={locked}
-                      onClick={() => toggleMealTypeSetting(type)}
-                      aria-pressed={on}
-                      aria-label={`${MEAL_TYPE_LABELS[type]} ${on ? 'on' : 'off'}`}
-                    >
-                      <span className={styles.mealTypeKnob} />
-                    </button>
-                  </div>
-                )
-              })}
-            </section>
-
             <section className={styles.settingsSection}>
               <h2 className={styles.settingsTitle}>Meal focus</h2>
               <p className={styles.settingsDesc}>
@@ -998,8 +1034,6 @@ export default function Home() {
               ? `Update ${(detailSlot?.day ?? selectedDay)!} ${MEAL_TYPE_LABELS[(detailSlot?.mealType ?? selectedMealType)!]}`
               : undefined
           }
-          onSelectAlternative={detailPick ? handleDetailAlternate : undefined}
-          selectedAlternateUrl={selectedAlternateUrl}
         />
       )}
 

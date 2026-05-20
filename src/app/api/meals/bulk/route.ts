@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { meals, weekPlans } from '@/db/schema'
 import { DAYS } from '@/lib/types'
 import { MEAL_TYPES, type MealType } from '@/lib/mealTypes'
+import { markCatalogSuggested } from '@/lib/catalogSuggest'
 import { normalizeMealSuggestion, type RawMealSuggestion } from '@/lib/normalizeMeal'
 
 type BulkSelection = {
@@ -75,14 +76,26 @@ export async function POST(req: NextRequest) {
   try {
     const weekStartDate = new Date(weekStart)
     const allSaved: (typeof meals.$inferSelect)[] = []
+    const catalogIdsSuggested: number[] = []
 
     for (const { mealType, meals: rawMeals } of validSelections) {
+      const normalized = rawMeals.map(normalizeMealSuggestion)
       const toInsert =
-        mealType === 'dinner' ? orderDinnerMeals(rawMeals.map(normalizeMealSuggestion)) : rawMeals.map(normalizeMealSuggestion)
+        mealType === 'dinner' ? orderDinnerMeals(normalized) : normalized
+
+      for (const row of toInsert) {
+        if (row.catalogRecipeId) catalogIdsSuggested.push(row.catalogRecipeId)
+      }
 
       const saved = await db
         .insert(meals)
-        .values(toInsert.map(row => ({ ...row, mealType })))
+        .values(
+          toInsert.map(({ catalogRecipeId, ...row }) => ({
+            ...row,
+            mealType,
+            catalogRecipeId: catalogRecipeId ?? null,
+          }))
+        )
         .returning()
       allSaved.push(...saved)
 
@@ -125,6 +138,10 @@ export async function POST(req: NextRequest) {
           })
         }
       }
+    }
+
+    if (catalogIdsSuggested.length) {
+      await markCatalogSuggested([...new Set(catalogIdsSuggested)])
     }
 
     return NextResponse.json({ meals: allSaved })

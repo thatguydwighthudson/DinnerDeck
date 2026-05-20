@@ -10,6 +10,27 @@ import {
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
+export const curatedRecipes = pgTable(
+  'CuratedRecipe',
+  {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    sourceUrl: text('source_url').notNull(),
+    mealType: text('meal_type').notNull().default('dinner'),
+    tags: text('tags').array().notNull().default([]),
+    isVeg: boolean('isVeg').notNull().default(false),
+    emoji: text('emoji').notNull().default('🍽'),
+    enriched: jsonb('enriched'),
+    active: boolean('active').notNull().default(true),
+    sortOrder: integer('sort_order'),
+    curatorNotes: text('curator_notes').notNull().default(''),
+    lastSuggestedAt: timestamp('last_suggested_at', { mode: 'date' }),
+    createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt', { mode: 'date' }).notNull().defaultNow(),
+  },
+  table => [uniqueIndex('CuratedRecipe_source_url_key').on(table.sourceUrl)]
+)
+
 export const meals = pgTable('Meal', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
@@ -33,6 +54,7 @@ export const meals = pgTable('Meal', {
   alternateRecipes: jsonb('alternate_recipes'),
   mealType: text('meal_type').notNull().default('dinner'),
   aiGenerated: boolean('aiGenerated').notNull().default(false),
+  catalogRecipeId: integer('catalog_recipe_id').references(() => curatedRecipes.id),
   deletedAt: timestamp('deletedAt', { mode: 'date' }),
   createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updatedAt', { mode: 'date' }).notNull().defaultNow(),
@@ -94,7 +116,15 @@ export const importedUrls = pgTable('ImportedUrl', {
   createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
 })
 
-export const mealsRelations = relations(meals, ({ many }) => ({
+export const curatedRecipesRelations = relations(curatedRecipes, ({ many }) => ({
+  libraryMeals: many(meals),
+}))
+
+export const mealsRelations = relations(meals, ({ one, many }) => ({
+  catalogRecipe: one(curatedRecipes, {
+    fields: [meals.catalogRecipeId],
+    references: [curatedRecipes.id],
+  }),
   weekPlanAdult: many(weekPlans, { relationName: 'adultMeal' }),
   weekPlanKidsAdult: many(weekPlans, { relationName: 'kidsAdultMeal' }),
   history: many(mealHistory),

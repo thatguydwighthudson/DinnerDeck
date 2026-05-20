@@ -123,6 +123,42 @@
 
 .importRow { display: flex; gap: 8px; margin-bottom: 10px; }
 
+.mealSearchRow {
+  position: relative;
+  margin-bottom: 8px;
+}
+.mealSearchInput {
+  padding-right: 36px;
+}
+.mealSearchClear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg2);
+  color: var(--muted);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.mealLibrarySummary {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.mealLibraryList { margin-top: 10px; }
+.mealLibraryEmpty {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+
 .filterRow { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; scrollbar-width: none; }
 .filterRow::-webkit-scrollbar { display: none; }
 .chip { padding: 6px 13px; border-radius: 16px; border: 0.5px solid var(--border2); background: var(--bg); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; color: var(--muted); }
@@ -178,17 +214,51 @@
 .storeSection { margin-bottom: 18px; }
 .groceryCategory { margin-bottom: 14px; }
 .groceryCategory:last-child { margin-bottom: 0; }
-.mealTypeSection { margin-bottom: 20px; }
+.mealTypeSection { margin-bottom: 12px; }
 .mealTypeSectionTitle {
-  font-size: 12px;
+  width: 100%;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0 0 10px;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+  margin: 0;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.mealTypeSectionTitleOpen {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+.mealTypeSectionChevron {
+  font-size: 10px;
+  color: var(--muted);
+  width: 12px;
+  flex-shrink: 0;
+}
+.mealTypeSectionLabel {
+  flex: 1;
+  min-width: 0;
+}
+.mealTypeSectionPreview {
+  font-size: 12px;
+  color: var(--muted);
+  margin: -6px 0 0;
+  padding: 0 14px 10px 36px;
+  line-height: 1.4;
+}
+.mealTypeSection .mealItem:first-of-type {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: 0;
 }
 .mealTypeSectionCount {
   font-size: 11px;

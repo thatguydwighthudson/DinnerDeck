@@ -141,6 +141,37 @@
   color: var(--muted);
 }
 
+.addBlock {
+  margin-top: 4px;
+  padding: 12px 0;
+  border-top: 0.5px solid var(--border);
+}
+
+.addLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.addBtn {
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sage);
+  cursor: pointer;
+}
+
 .kidsBlock {
   margin-top: 8px;
   padding-top: 12px;
