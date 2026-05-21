@@ -56,5 +56,5 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
 
 export async function signOut() {
   await deleteSession()
-  redirect('/')
+  redirect('/signin')
 }

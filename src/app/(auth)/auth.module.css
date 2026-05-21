@@ -12,6 +12,11 @@
   margin-bottom: 4px;
 }
 
+.brandHero {
+  align-self: center;
+  margin-bottom: 28px;
+}
+
 .sub {
   font-size: 14px;
   color: var(--muted);

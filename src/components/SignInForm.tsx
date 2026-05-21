@@ -21,10 +21,8 @@ export default function SignInForm() {
 
   return (
     <main className={styles.wrap}>
-      <BrandMark size="lg" className={styles.brand} />
-      <p className={styles.sub}>Sign in to your meal plan</p>
+      <BrandMark size="xl" className={styles.brandHero} />
       <div className={styles.card}>
-        <h1 className={styles.title}>Sign in</h1>
         <form action={action}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="email">
