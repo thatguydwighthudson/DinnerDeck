@@ -77,24 +77,24 @@
 }
 
 .tagP {
-  background: #e6efe5;
-  color: #2d5329;
+  background: var(--tag-protein-bg);
+  color: var(--tag-protein-text);
 }
 
 .tagV {
-  background: #eaf3de;
-  color: #3b6d11;
+  background: var(--tag-veg-bg);
+  color: var(--tag-veg-text);
 }
 
 .tagLc {
-  background: #f9ede5;
-  color: #7a2e10;
+  background: var(--tag-lowcarb-bg);
+  color: var(--tag-lowcarb-text);
 }
 
 .toggle input {
   width: 20px;
   height: 20px;
-  accent-color: var(--sage);
+  accent-color: var(--primary);
   cursor: pointer;
 }
 
@@ -106,7 +106,7 @@
 
 .confirmBtn {
   width: 100%;
-  background: var(--sage);
+  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 24px;

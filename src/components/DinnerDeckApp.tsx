@@ -26,6 +26,7 @@ import {
   type DayMealTypesState,
   type MealType,
 } from '@/lib/mealTypes'
+import BrandMark from '@/components/BrandMark'
 import {
   MEAL_FOCUS_PRESETS,
   loadMealFocus,
@@ -601,7 +602,7 @@ export default function DinnerDeckApp({ user }: DinnerDeckAppProps) {
       <header className={styles.topBar}>
         <div className={styles.topBarMain}>
           <div>
-            <div className={styles.logo}>DinnerDeck</div>
+            <BrandMark size="sm" className={styles.logo} />
             <div className={styles.topSub}>
               {page === 'week' && weekNav === 'overview'
                 ? timeGreeting(user.name)

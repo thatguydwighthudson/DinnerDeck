@@ -162,7 +162,7 @@
 }
 
 .primaryBtn {
-  background: var(--sage);
+  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 24px;

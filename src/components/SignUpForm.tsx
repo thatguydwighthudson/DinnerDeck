@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signUp, type AuthFormState } from '@/app/actions/auth'
+import BrandMark from '@/components/BrandMark'
 import PasswordField from '@/components/PasswordField'
 import styles from '@/app/(auth)/auth.module.css'
 
@@ -32,7 +33,7 @@ export default function SignUpForm() {
 
   return (
     <main className={styles.wrap}>
-      <div className={styles.brand}>DinnerDeck</div>
+      <BrandMark size="lg" className={styles.brand} />
       <p className={styles.sub}>Set up your household meal plan</p>
       <div className={styles.card}>
         <h1 className={styles.title}>Create account</h1>

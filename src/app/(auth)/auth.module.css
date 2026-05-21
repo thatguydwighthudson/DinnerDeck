@@ -9,10 +9,6 @@
 }
 
 .brand {
-  font-size: 26px;
-  font-weight: 600;
-  color: var(--sage);
-  letter-spacing: -0.3px;
   margin-bottom: 4px;
 }
 
@@ -54,7 +50,7 @@
 }
 
 .submit {
-  background: var(--sage);
+  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 24px;
@@ -77,7 +73,7 @@
 }
 
 .footer a {
-  color: var(--sage);
+  color: var(--primary);
   font-weight: 500;
   text-decoration: none;
 }
@@ -102,7 +98,7 @@
 }
 
 .checkLabel:has(input:checked) {
-  border-color: var(--sage);
+  border-color: var(--primary);
   background: var(--sage-l);
 }
 
@@ -122,8 +118,8 @@
 }
 
 .householdBtnOn {
-  border-color: var(--sage);
+  border-color: var(--primary);
   background: var(--sage-l);
-  color: var(--sage);
+  color: var(--primary);
   font-weight: 500;
 }

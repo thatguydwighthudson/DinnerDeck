@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import BrandMark from '@/components/BrandMark'
 import { getCurrentUser } from '@/lib/auth'
 import styles from './(auth)/auth.module.css'
 
@@ -9,7 +10,7 @@ export default async function HomePage() {
 
   return (
     <main className={styles.wrap}>
-      <div className={styles.brand}>DinnerDeck</div>
+      <BrandMark size="lg" className={styles.brand} />
       <p className={styles.sub}>Family meal planning — one week at a time.</p>
       <div className={styles.card}>
         <h1 className={styles.title}>Plan dinners together</h1>

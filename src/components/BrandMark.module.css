@@ -1,0 +1,49 @@
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.name {
+  font-weight: 600;
+  color: var(--primary);
+  letter-spacing: -0.3px;
+}
+
+.sm .icon {
+  width: 28px;
+  height: 28px;
+}
+
+.sm .name {
+  font-size: 20px;
+}
+
+.md .icon {
+  width: 40px;
+  height: 40px;
+}
+
+.md .name {
+  font-size: 22px;
+}
+
+.lg {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.lg .icon {
+  width: 56px;
+  height: 56px;
+}
+
+.lg .name {
+  font-size: 26px;
+}

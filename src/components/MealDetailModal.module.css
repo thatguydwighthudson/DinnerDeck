@@ -60,8 +60,8 @@
 
 .aiBadge {
   font-size: 10px;
-  background: #e6efe5;
-  color: #2d5329;
+  background: var(--tag-protein-bg);
+  color: var(--tag-protein-text);
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 500;
@@ -84,18 +84,18 @@
 }
 
 .tagP {
-  background: #e6efe5;
-  color: #2d5329;
+  background: var(--tag-protein-bg);
+  color: var(--tag-protein-text);
 }
 
 .tagV {
-  background: #eaf3de;
-  color: #3b6d11;
+  background: var(--tag-veg-bg);
+  color: var(--tag-veg-text);
 }
 
 .tagLc {
-  background: #f9ede5;
-  color: #7a2e10;
+  background: var(--tag-lowcarb-bg);
+  color: var(--tag-lowcarb-text);
 }
 
 .macros {
@@ -232,7 +232,7 @@ button.altCard {
 
 .updateBtn {
   width: 100%;
-  background: var(--sage);
+  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -266,7 +266,7 @@ button.altCard {
 
 .editBtn {
   width: 100%;
-  background: var(--sage);
+  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -279,8 +279,8 @@ button.altCard {
 .deleteBtn {
   width: 100%;
   background: transparent;
-  color: #a33;
-  border: 0.5px solid #e8c4c4;
+  color: var(--rust);
+  border: 0.5px solid var(--rust-l);
   border-radius: 10px;
   padding: 10px 16px;
   font-size: 14px;

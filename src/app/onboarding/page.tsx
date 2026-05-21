@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import BrandMark from '@/components/BrandMark'
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import styles from '../(auth)/auth.module.css'
@@ -9,7 +10,7 @@ export default async function OnboardingPage() {
 
   return (
     <main className={styles.wrap}>
-      <div className={styles.brand}>DinnerDeck</div>
+      <BrandMark size="lg" className={styles.brand} />
       <div className={styles.card}>
         <h1 className={styles.title}>Welcome, {user.name}!</h1>
         <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 20, lineHeight: 1.5 }}>

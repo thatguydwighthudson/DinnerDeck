@@ -3,6 +3,7 @@
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signIn, type AuthFormState } from '@/app/actions/auth'
+import BrandMark from '@/components/BrandMark'
 import PasswordField from '@/components/PasswordField'
 import styles from '@/app/(auth)/auth.module.css'
 
@@ -20,7 +21,7 @@ export default function SignInForm() {
 
   return (
     <main className={styles.wrap}>
-      <div className={styles.brand}>DinnerDeck</div>
+      <BrandMark size="lg" className={styles.brand} />
       <p className={styles.sub}>Sign in to your meal plan</p>
       <div className={styles.card}>
         <h1 className={styles.title}>Sign in</h1>

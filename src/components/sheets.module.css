@@ -5,10 +5,10 @@
 .sheetItem { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--border); cursor: pointer; }
 .sheetItem:last-child { border-bottom: none; }
 .sheetSelected { background: var(--sage-l); }
-.sheetFav { background: #FBF6E8; }
+.sheetFav { background: var(--fav-bg); }
 .sheetFav.sheetSelected { background: var(--sage-l); }
-.sheetFavBadge { color: #B8902A; font-size: 14px; margin-left: 6px; }
-.sheetFavLabel { color: #B8902A; font-weight: 500; }
+.sheetFavBadge { color: var(--fav); font-size: 14px; margin-left: 6px; }
+.sheetFavLabel { color: var(--fav); font-weight: 500; }
 .sEmoji { font-size: 22px; flex-shrink: 0; }
 .sInfo { flex: 1; }
 .sName { font-size: 14px; font-weight: 500; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
